@@ -59,6 +59,57 @@ header p {
     font-size: 1.2rem;
 }
 
+/* Toggle buttons for input mode */
+.input-mode-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 10px;
+    background: #e2e8f0;
+    color: #4a5568;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.toggle-btn:hover {
+    background: #cbd5e0;
+}
+
+.toggle-btn.active {
+    background: #667eea;
+    color: white;
+}
+
+/* Manual coordinates input */
+.input-mode {
+    margin-bottom: 15px;
+}
+
+.add-manual-btn {
+    width: 100%;
+    padding: 12px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.3s;
+    margin-top: 8px;
+}
+
+.add-manual-btn:hover {
+    background: #5a67d8;
+}
+
 .input-group {
     display: flex;
     gap: 10px;
@@ -137,6 +188,27 @@ header p {
 #locationsList li .location-name {
     font-weight: 600;
     color: #2d3748;
+}
+
+#locationsList li .location-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#locationsList li .set-origin-btn {
+    background: #48bb78;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+#locationsList li .set-origin-btn:hover {
+    background: #38a169;
 }
 
 #locationsList li .remove-btn {

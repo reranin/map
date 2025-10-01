@@ -348,8 +348,25 @@ function solveTSP(locations) {
   const visited = new Set();
   const result = [];
 
-  // Start with first location
-  let current = locations[0];
+  // Find current location (origin) if exists, otherwise use first location
+  let startLocation =
+    locations.find((loc) => loc.isCurrentLocation === true) || locations[0];
+
+  console.log("🔍 TSP Debug:");
+  console.log(
+    "All locations:",
+    locations.map((l) => ({
+      name: l.name,
+      isCurrentLocation: l.isCurrentLocation,
+    }))
+  );
+  console.log("Start location:", {
+    name: startLocation.name,
+    isCurrentLocation: startLocation.isCurrentLocation,
+  });
+
+  // Start with current location (origin)
+  let current = startLocation;
   result.push(current);
   visited.add(current.id);
 
@@ -374,6 +391,11 @@ function solveTSP(locations) {
       current = nearest;
     }
   }
+
+  console.log(
+    "Optimized route:",
+    result.map((l) => l.name)
+  );
 
   return result;
 }

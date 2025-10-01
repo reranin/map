@@ -117,6 +117,19 @@ function setupEventListeners() {
     .getElementById("clearAllBtn")
     .addEventListener("click", clearAllLocations);
 
+  // Toggle between search and manual mode
+  document
+    .getElementById("searchModeBtn")
+    .addEventListener("click", switchToSearchMode);
+  document
+    .getElementById("manualModeBtn")
+    .addEventListener("click", switchToManualMode);
+
+  // Manual location input
+  document
+    .getElementById("addManualLocationBtn")
+    .addEventListener("click", addManualLocation);
+
   // Enter key support for location input
   document
     .getElementById("locationName")
@@ -125,6 +138,88 @@ function setupEventListeners() {
         addLocationFromInput();
       }
     });
+
+  // Enter key support for manual coordinates
+  document
+    .getElementById("manualLocationName")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        addManualLocation();
+      }
+    });
+  document
+    .getElementById("manualLat")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        addManualLocation();
+      }
+    });
+  document
+    .getElementById("manualLng")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        addManualLocation();
+      }
+    });
+}
+
+// Switch to search mode
+function switchToSearchMode() {
+  document.getElementById("searchMode").style.display = "block";
+  document.getElementById("manualMode").style.display = "none";
+  document.getElementById("searchModeBtn").classList.add("active");
+  document.getElementById("manualModeBtn").classList.remove("active");
+}
+
+// Switch to manual coordinates mode
+function switchToManualMode() {
+  document.getElementById("searchMode").style.display = "none";
+  document.getElementById("manualMode").style.display = "block";
+  document.getElementById("searchModeBtn").classList.remove("active");
+  document.getElementById("manualModeBtn").classList.add("active");
+}
+
+// Add location manually with coordinates
+function addManualLocation() {
+  const locationName = document
+    .getElementById("manualLocationName")
+    .value.trim();
+  const lat = parseFloat(document.getElementById("manualLat").value);
+  const lng = parseFloat(document.getElementById("manualLng").value);
+
+  // Validation
+  if (!locationName) {
+    showToast("لطفاً نام لوکیشن را وارد کنید", "error");
+    return;
+  }
+
+  if (isNaN(lat) || isNaN(lng)) {
+    showToast("لطفاً مختصات صحیح وارد کنید", "error");
+    return;
+  }
+
+  // Validate latitude range (-90 to 90)
+  if (lat < -90 || lat > 90) {
+    showToast("Latitude باید بین -90 تا 90 باشد", "error");
+    return;
+  }
+
+  // Validate longitude range (-180 to 180)
+  if (lng < -180 || lng > 180) {
+    showToast("Longitude باید بین -180 تا 180 باشد", "error");
+    return;
+  }
+
+  // Add location
+  addLocation(locationName, lat, lng);
+
+  // Clear inputs
+  document.getElementById("manualLocationName").value = "";
+  document.getElementById("manualLat").value = "";
+  document.getElementById("manualLng").value = "";
+
+  // Center map on the new location
+  map.setView([lat, lng], 14);
 }
 
 // Add location from input field
@@ -167,12 +262,13 @@ function geocodeLocation(locationName) {
 }
 
 // Add location to the list
-function addLocation(name, lat, lng) {
+function addLocation(name, lat, lng, isCurrentLocation = false) {
   const location = {
     id: Date.now(),
     name: name,
     lat: lat,
     lng: lng,
+    isCurrentLocation: isCurrentLocation,
   };
 
   locations.push(location);
@@ -201,15 +297,40 @@ function updateLocationsList() {
 
   locations.forEach((location) => {
     const li = document.createElement("li");
+    const originBadge = location.isCurrentLocation
+      ? '<span style="background: #48bb78; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px;">مبدا</span>'
+      : "";
+    const setOriginBtn = !location.isCurrentLocation
+      ? `<button class="set-origin-btn" onclick="setAsOrigin(${location.id})" title="تنظیم به عنوان مبدا">📍</button>`
+      : "";
     li.innerHTML = `
-            <span class="location-name">${location.name}</span>
-            <button class="remove-btn" onclick="removeLocation(${location.id})">حذف</button>
+            <span class="location-name">${location.name} ${originBadge}</span>
+            <div class="location-actions">
+                ${setOriginBtn}
+                <button class="remove-btn" onclick="removeLocation(${location.id})">حذف</button>
+            </div>
         `;
     list.appendChild(li);
   });
 
   // Enable/disable optimize button
   document.getElementById("optimizeRouteBtn").disabled = locations.length < 2;
+}
+
+// Set location as origin
+function setAsOrigin(locationId) {
+  // Remove origin flag from all locations
+  locations.forEach((loc) => {
+    loc.isCurrentLocation = false;
+  });
+
+  // Set the selected location as origin
+  const location = locations.find((loc) => loc.id === locationId);
+  if (location) {
+    location.isCurrentLocation = true;
+    updateLocationsList();
+    showToast(`"${location.name}" به عنوان مبدا تنظیم شد`);
+  }
 }
 
 // Remove location
@@ -272,18 +393,23 @@ function reverseGeocode(lat, lng) {
     .then((response) => response.json())
     .then((data) => {
       if (data.success) {
-        addLocation(data.location.name, data.location.lat, data.location.lng);
+        addLocation(
+          data.location.name,
+          data.location.lat,
+          data.location.lng,
+          true
+        );
       } else {
         const locationName = `موقعیت فعلی (${lat.toFixed(4)}, ${lng.toFixed(
           4
         )})`;
-        addLocation(locationName, lat, lng);
+        addLocation(locationName, lat, lng, true);
       }
     })
     .catch((error) => {
       console.error("Reverse geocoding error:", error);
       const locationName = `موقعیت فعلی (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-      addLocation(locationName, lat, lng);
+      addLocation(locationName, lat, lng, true);
     });
 }
 

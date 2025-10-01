@@ -22,10 +22,33 @@
             <div class="sidebar">
                 <div class="location-input">
                     <h3>📍 اضافه کردن لوکیشن</h3>
-                    <div class="input-group">
-                        <input type="text" id="locationName" placeholder="نام لوکیشن (مثال: خانه، محل کار)">
-                        <button id="addLocationBtn">اضافه کردن</button>
+
+                    <!-- Toggle between search and manual coords -->
+                    <div class="input-mode-toggle">
+                        <button id="searchModeBtn" class="toggle-btn active">جستجو</button>
+                        <button id="manualModeBtn" class="toggle-btn">مختصات دستی</button>
                     </div>
+
+                    <!-- Search mode -->
+                    <div id="searchMode" class="input-mode">
+                        <div class="input-group">
+                            <input type="text" id="locationName" placeholder="نام لوکیشن (مثال: خانه، محل کار)">
+                            <button id="addLocationBtn">اضافه کردن</button>
+                        </div>
+                    </div>
+
+                    <!-- Manual coordinates mode -->
+                    <div id="manualMode" class="input-mode" style="display: none;">
+                        <div class="input-group">
+                            <input type="text" id="manualLocationName" placeholder="نام لوکیشن">
+                        </div>
+                        <div class="input-group">
+                            <input type="number" step="any" id="manualLat" placeholder="Latitude (مثال: 35.699756)">
+                            <input type="number" step="any" id="manualLng" placeholder="Longitude (مثال: 51.338076)">
+                        </div>
+                        <button id="addManualLocationBtn" class="add-manual-btn">اضافه کردن مختصات</button>
+                    </div>
+
                     <div class="current-location">
                         <button id="getCurrentLocationBtn">📍 موقعیت فعلی من</button>
                     </div>
