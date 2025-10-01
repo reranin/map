@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تست Neshan SDK</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            border: 1px solid #ccc;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Neshan SDK -->
+    <script src="https://platform.neshan.org/sdk/web-sdk/1.0.0/neshan-sdk.js"></script>
+</head>
+
+<body>
+    <h1>تست بارگذاری Neshan SDK</h1>
+    <div id="status"></div>
+    <div id="map"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        window.addEventListener('load', function () {
+            updateStatus('صفحه بارگذاری شد', 'info');
+
+            setTimeout(() => {
+                if (typeof L !== 'undefined') {
+                    updateStatus('✅ Leaflet SDK بارگذاری شد', 'success');
+
+                    try {
+                        // Test creating a simple map
+                        const testMap = new L.Map('map', {
+                            key: 'web.89a6be71092e4dc1925b0f47e926e894',
+                            maptype: 'neshan',
+                            center: [35.7219, 51.3347],
+                            zoom: 12
+                        });
+
+                        updateStatus('✅ نقشه Neshan با موفقیت ایجاد شد', 'success');
+
+                    } catch (error) {
+                        updateStatus('❌ خطا در ایجاد نقشه: ' + error.message, 'error');
+                    }
+                } else {
+                    updateStatus('❌ Leaflet SDK بارگذاری نشد', 'error');
+                }
+            }, 2000);
+        });
+
+        // Check for script loading errors
+        document.querySelector('script[src*="neshan-sdk"]').onerror = function () {
+            updateStatus('❌ خطا در بارگذاری Neshan SDK از CDN', 'error');
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بهینه‌ساز مسیر Neshan</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Neshan SDK - Official -->
+    <link rel="stylesheet" href="https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.css" />
+    <script src="https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🗺️ بهینه‌ساز مسیر Neshan</h1>
+            <p>لوکیشن‌های خود را اضافه کنید و بهترین مسیر را پیدا کنید</p>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="location-input">
+                    <h3>📍 اضافه کردن لوکیشن</h3>
+                    <div class="input-group">
+                        <input type="text" id="locationName" placeholder="نام لوکیشن (مثال: خانه، محل کار)">
+                        <button id="addLocationBtn">اضافه کردن</button>
+                    </div>
+                    <div class="current-location">
+                        <button id="getCurrentLocationBtn">📍 موقعیت فعلی من</button>
+                    </div>
+                </div>
+
+                <div class="locations-list">
+                    <h3>📋 لیست لوکیشن‌ها</h3>
+                    <ul id="locationsList"></ul>
+                    <div class="actions">
+                        <button id="optimizeRouteBtn" class="primary-btn">🚀 بهینه‌سازی مسیر</button>
+                        <button id="clearAllBtn" class="secondary-btn">🗑️ پاک کردن همه</button>
+                    </div>
+                </div>
+
+                <div class="route-info" id="routeInfo" style="display: none;">
+                    <h3>📊 اطلاعات مسیر</h3>
+                    <div id="routeDetails"></div>
+                </div>
+            </div>
+
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
