@@ -36,7 +36,7 @@ app.get("/test-simple", (req, res) => {
 // API Key endpoint
 app.get("/api/config", (req, res) => {
   res.json({
-    neshanApiKey: config.NESHAN_API_KEY,
+    neshanApiKey: config.NESHAN_WEB_API_KEY,
   });
 });
 
@@ -53,11 +53,15 @@ app.post("/api/geocode", async (req, res) => {
     try {
       const geocodingUrl = `${
         config.NESHAN_BASE_URL
-      }/search?term=${encodeURIComponent(
+      }/v1/search?term=${encodeURIComponent(
         locationName
-      )}&lat=35.7219&lng=51.3347&api_key=${config.NESHAN_API_KEY}`;
+      )}&lat=35.7219&lng=51.3347`;
 
-      const response = await axios.get(geocodingUrl);
+      const response = await axios.get(geocodingUrl, {
+        headers: {
+          "Api-Key": config.NESHAN_SERVICE_API_KEY,
+        },
+      });
 
       if (response.data.items && response.data.items.length > 0) {
         const location = response.data.items[0];
@@ -74,15 +78,26 @@ app.post("/api/geocode", async (req, res) => {
     } catch (neshanError) {
       console.warn(
         "Neshan geocoding failed, trying OpenStreetMap:",
-        neshanError.message
+        neshanError.response && neshanError.response.status,
+        (neshanError.response &&
+          neshanError.response.data &&
+          neshanError.response.data.message) ||
+          neshanError.message
       );
+
+      // If error 485, it means Search API is not enabled for this key
+      if (neshanError.response && neshanError.response.status === 485) {
+        console.log(
+          "⚠️  سرویس Search برای این API Key فعال نیست. از OpenStreetMap استفاده می‌شود."
+        );
+      }
     }
 
     // Fallback to OpenStreetMap Nominatim
     try {
       const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        locationName + " ایران"
-      )}&limit=1`;
+        locationName
+      )}&countrycodes=ir&limit=5&addressdetails=1`;
       const response = await axios.get(nominatimUrl, {
         headers: {
           "User-Agent": "NeshanRouteOptimizer/1.0",
@@ -91,6 +106,7 @@ app.post("/api/geocode", async (req, res) => {
 
       if (response.data && response.data.length > 0) {
         const location = response.data[0];
+        console.log(`✅ Found via OpenStreetMap: ${location.display_name}`);
         return res.json({
           success: true,
           location: {
@@ -127,8 +143,12 @@ app.post("/api/reverse-geocode", async (req, res) => {
 
     // Try Neshan API first
     try {
-      const reverseUrl = `${config.NESHAN_BASE_URL}/reverse?lat=${lat}&lng=${lng}&api_key=${config.NESHAN_API_KEY}`;
-      const response = await axios.get(reverseUrl);
+      const reverseUrl = `${config.NESHAN_BASE_URL}/v1/reverse?lat=${lat}&lng=${lng}`;
+      const response = await axios.get(reverseUrl, {
+        headers: {
+          "Api-Key": config.NESHAN_SERVICE_API_KEY,
+        },
+      });
 
       if (response.data && response.data.formatted_address) {
         return res.json({
@@ -208,10 +228,19 @@ app.post("/api/get-route", async (req, res) => {
     }
 
     try {
-      // Use Neshan Direction API
-      const directionUrl = `${config.NESHAN_BASE_URL}/direction?type=car&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&api_key=${config.NESHAN_API_KEY}`;
+      // Use Neshan Direction API v4
+      // Based on: https://platform.neshan.org/api/direction/
+      const directionUrl = `${config.NESHAN_BASE_URL}/v4/direction?type=car&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`;
 
-      const response = await axios.get(directionUrl);
+      console.log("Calling Neshan Direction API:", directionUrl);
+
+      const response = await axios.get(directionUrl, {
+        headers: {
+          "Api-Key": config.NESHAN_SERVICE_API_KEY,
+        },
+      });
+
+      console.log("Neshan API Response:", response.data ? "Success" : "Failed");
 
       if (
         response.data &&
@@ -221,15 +250,22 @@ app.post("/api/get-route", async (req, res) => {
         const route = response.data.routes[0];
 
         // Extract coordinates from the route
-        const coordinates = [];
+        let coordinates = [];
 
-        if (route.legs && route.legs.length > 0) {
+        // Method 1: Try to use overview_polyline first (faster and simpler)
+        if (route.overview_polyline && route.overview_polyline.points) {
+          coordinates = decodePolyline(route.overview_polyline.points);
+        }
+        // Method 2: Fallback to steps polylines
+        else if (route.legs && route.legs.length > 0) {
           route.legs.forEach((leg) => {
             if (leg.steps && leg.steps.length > 0) {
               leg.steps.forEach((step) => {
                 if (step.polyline) {
-                  // Decode polyline
                   const decodedPoints = decodePolyline(step.polyline);
+                  coordinates.push(...decodedPoints);
+                } else if (step.encoded_polyline) {
+                  const decodedPoints = decodePolyline(step.encoded_polyline);
                   coordinates.push(...decodedPoints);
                 }
               });
@@ -237,21 +273,42 @@ app.post("/api/get-route", async (req, res) => {
           });
         }
 
+        // Get distance and duration from legs
+        let totalDistance = 0;
+        let totalDuration = 0;
+        if (route.legs && route.legs.length > 0) {
+          route.legs.forEach((leg) => {
+            if (leg.distance && leg.distance.value) {
+              totalDistance += leg.distance.value;
+            }
+            if (leg.duration && leg.duration.value) {
+              totalDuration += leg.duration.value;
+            }
+          });
+        }
+
         // If we have coordinates, return them
         if (coordinates.length > 0) {
+          console.log(`✅ Route found with ${coordinates.length} points`);
           return res.json({
             success: true,
             route: coordinates,
-            distance: route.overview ? route.overview.distance : 0,
-            duration: route.overview ? route.overview.duration : 0,
+            distance: totalDistance / 1000, // Convert meters to kilometers
+            duration: totalDuration, // Duration in seconds
           });
         }
       }
     } catch (neshanError) {
-      console.warn("Neshan Direction API failed:", neshanError.message);
+      console.warn(
+        "Neshan Direction API failed:",
+        neshanError.response && neshanError.response.status,
+        (neshanError.response && neshanError.response.data) ||
+          neshanError.message
+      );
     }
 
     // Fallback: return straight line
+    console.log("⚠️ Falling back to straight line");
     res.json({
       success: true,
       route: [

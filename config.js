@@ -2,8 +2,17 @@
 require("dotenv").config();
 
 module.exports = {
-  NESHAN_API_KEY:
-    process.env.NESHAN_API_KEY || "web.89a6be71092e4dc1925b0f47e926e894",
+  // Web SDK API Key (for displaying map in browser)
+  NESHAN_WEB_API_KEY:
+    process.env.NESHAN_WEB_API_KEY || "web.89a6be71092e4dc1925b0f47e926e894",
+
+  // Service API Key (for server-side APIs like routing, search, etc.)
+  // You need to get a service.* key from Neshan panel: https://platform.neshan.org/
+  // Select "سرویس‌ها" > "مسیریابی" when creating the API key
+  NESHAN_SERVICE_API_KEY:
+    process.env.NESHAN_SERVICE_API_KEY ||
+    "service.d4f0a1418842472d848563aed6228441",
+
   PORT: process.env.PORT || 3000,
-  NESHAN_BASE_URL: process.env.NESHAN_BASE_URL || "https://api.neshan.org/v1",
+  NESHAN_BASE_URL: process.env.NESHAN_BASE_URL || "https://api.neshan.org",
 };

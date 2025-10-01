@@ -9,71 +9,225 @@
     <!-- Neshan SDK - Official -->
     <link rel="stylesheet" href="https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.css" />
     <script src="https://static.neshan.org/sdk/leaflet/v1.9.4/neshan-sdk/v1.0.8/index.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
 
 <body>
+    <!-- Background Animation -->
+    <div class="background-animation">
+        <div class="floating-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+            <div class="shape shape-4"></div>
+        </div>
+    </div>
+
     <div class="container">
-        <header>
-            <h1>🗺️ بهینه‌ساز مسیر Neshan</h1>
-            <p>لوکیشن‌های خود را اضافه کنید و بهترین مسیر را پیدا کنید</p>
-        </header>
 
         <div class="main-content">
+            <!-- Modern Sidebar -->
             <div class="sidebar">
-                <div class="location-input">
-                    <h3>📍 اضافه کردن لوکیشن</h3>
-
-                    <!-- Toggle between search and manual coords -->
-                    <div class="input-mode-toggle">
-                        <button id="searchModeBtn" class="toggle-btn active">جستجو</button>
-                        <button id="manualModeBtn" class="toggle-btn">مختصات دستی</button>
+                <!-- Location Input Card -->
+                <div class="card location-input-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <h3>اضافه کردن لوکیشن</h3>
                     </div>
 
-                    <!-- Search mode -->
-                    <div id="searchMode" class="input-mode">
-                        <div class="input-group">
-                            <input type="text" id="locationName" placeholder="نام لوکیشن (مثال: خانه، محل کار)">
-                            <button id="addLocationBtn">اضافه کردن</button>
+                    <div class="card-content">
+                        <!-- Toggle between search and manual coords -->
+                        <div class="input-mode-toggle">
+                            <button id="searchModeBtn" class="toggle-btn active">
+                                <i class="fas fa-search"></i>
+                                <span>جستجو</span>
+                            </button>
+                            <button id="manualModeBtn" class="toggle-btn">
+                                <i class="fas fa-crosshairs"></i>
+                                <span>مختصات</span>
+                            </button>
                         </div>
-                    </div>
 
-                    <!-- Manual coordinates mode -->
-                    <div id="manualMode" class="input-mode" style="display: none;">
-                        <div class="input-group">
-                            <input type="text" id="manualLocationName" placeholder="نام لوکیشن">
+                        <!-- Search mode -->
+                        <div id="searchMode" class="input-mode">
+                            <div class="input-group">
+                                <div class="input-wrapper">
+                                    <i class="fas fa-map-pin input-icon"></i>
+                                    <input type="text" id="locationName" placeholder="نام لوکیشن (مثال: خانه، محل کار)">
+                                </div>
+                                <button id="addLocationBtn" class="add-btn">
+                                    <i class="fas fa-plus"></i>
+                                    <span>اضافه کردن</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <input type="number" step="any" id="manualLat" placeholder="Latitude (مثال: 35.699756)">
-                            <input type="number" step="any" id="manualLng" placeholder="Longitude (مثال: 51.338076)">
-                        </div>
-                        <button id="addManualLocationBtn" class="add-manual-btn">اضافه کردن مختصات</button>
-                    </div>
 
-                    <div class="current-location">
-                        <button id="getCurrentLocationBtn">📍 موقعیت فعلی من</button>
+                        <!-- Manual coordinates mode -->
+                        <div id="manualMode" class="input-mode" style="display: none;">
+                            <div class="input-group">
+                                <div class="input-wrapper">
+                                    <i class="fas fa-tag input-icon"></i>
+                                    <input type="text" id="manualLocationName" placeholder="نام لوکیشن">
+                                </div>
+                            </div>
+                            <div class="coordinates-inputs">
+                                <div class="input-wrapper">
+                                    <i class="fas fa-latitude input-icon"></i>
+                                    <input type="number" step="any" id="manualLat" placeholder="Latitude">
+                                </div>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-longitude input-icon"></i>
+                                    <input type="number" step="any" id="manualLng" placeholder="Longitude">
+                                </div>
+                            </div>
+                            <button id="addManualLocationBtn" class="add-manual-btn">
+                                <i class="fas fa-plus"></i>
+                                <span>اضافه کردن مختصات</span>
+                            </button>
+                        </div>
+
+                        <div class="current-location">
+                            <button id="getCurrentLocationBtn" class="current-location-btn">
+                                <i class="fas fa-location-arrow"></i>
+                                <span>موقعیت فعلی من</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="locations-list">
-                    <h3>📋 لیست لوکیشن‌ها</h3>
-                    <ul id="locationsList"></ul>
-                    <div class="actions">
-                        <button id="optimizeRouteBtn" class="primary-btn">🚀 بهینه‌سازی مسیر</button>
-                        <button id="clearAllBtn" class="secondary-btn">🗑️ پاک کردن همه</button>
+                <!-- Locations List Card -->
+                <div class="card locations-list-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-list-ul"></i>
+                        </div>
+                        <h3>لیست لوکیشن‌ها</h3>
+                        <div class="location-count" id="locationCount">0</div>
+                    </div>
+
+                    <div class="card-content">
+                        <div class="locations-container">
+                            <ul id="locationsList" class="locations-list"></ul>
+                        </div>
+
+                        <div class="actions">
+                            <button id="optimizeRouteBtn" class="primary-btn">
+                                <i class="fas fa-rocket"></i>
+                                <span>بهینه‌سازی مسیر</span>
+                            </button>
+                            <button id="clearAllBtn" class="secondary-btn">
+                                <i class="fas fa-trash"></i>
+                                <span>پاک کردن همه</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="route-info" id="routeInfo" style="display: none;">
-                    <h3>📊 اطلاعات مسیر</h3>
-                    <div id="routeDetails"></div>
+                <!-- Route Info Card -->
+                <div class="card route-info-card" id="routeInfo" style="display: none;">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <h3>اطلاعات مسیر</h3>
+                    </div>
+
+                    <div class="card-content">
+                        <div id="routeDetails" class="route-details"></div>
+                        <button id="startNavigationBtn" class="navigation-btn" style="display: none;">
+                            <i class="fas fa-navigation"></i>
+                            <span>شروع مسیریابی زنده</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <!-- Map Container -->
             <div class="map-container">
-                <div id="map"></div>
+                <div class="map-header">
+                    <div class="map-controls">
+                        <button class="map-control-btn" id="toggleSidebarBtn" title="نمایش/مخفی کردن پنل">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <button class="map-control-btn" id="zoomInBtn" title="بزرگنمایی">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="map-control-btn" id="zoomOutBtn" title="کوچکنمایی">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button class="map-control-btn" id="centerMapBtn" title="مرکز نقشه">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="map" class="map"></div>
+
+                <!-- Navigation Panel -->
+                <div id="navigationPanel" class="navigation-panel" style="display: none;">
+                    <div class="nav-header">
+                        <div class="nav-title">
+                            <i class="fas fa-navigation"></i>
+                            <h3>مسیریابی زنده</h3>
+                        </div>
+                        <button id="stopNavigationBtn" class="stop-nav-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="nav-stats">
+                        <div class="nav-stat">
+                            <div class="stat-icon">
+                                <i class="fas fa-road"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">مسافت باقی‌مانده</span>
+                                <span class="stat-value" id="remainingDistance">-- کیلومتر</span>
+                            </div>
+                        </div>
+                        <div class="nav-stat">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <span class="stat-label">زمان تخمینی</span>
+                                <span class="stat-value" id="remainingTime">-- دقیقه</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nav-instruction">
+                        <div class="instruction-icon" id="instructionIcon">
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                        <div class="instruction-text" id="instructionText">در حال محاسبه مسیر...</div>
+                    </div>
+
+                    <div class="nav-next-step" id="nextStep" style="display: none;">
+                        <i class="fas fa-info-circle"></i>
+                        <small>بعدی: <span id="nextStepText"></span></small>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>در حال پردازش...</p>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <script src="script.js"></script>
 </body>

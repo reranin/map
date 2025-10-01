@@ -11,6 +11,9 @@ let routePolyline = null;
 document.addEventListener("DOMContentLoaded", function () {
   console.log("DOM loaded, initializing application...");
 
+  // Add fullscreen class to container for full-screen map
+  document.querySelector(".container").classList.add("fullscreen");
+
   // Load API key from server first
   loadApiKey()
     .then(() => {
@@ -161,6 +164,48 @@ function setupEventListeners() {
         addManualLocation();
       }
     });
+
+  // Map controls
+  document
+    .getElementById("toggleSidebarBtn")
+    .addEventListener("click", function () {
+      const sidebar = document.querySelector(".sidebar");
+      const toggleBtn = document.getElementById("toggleSidebarBtn");
+      const icon = toggleBtn.querySelector("i");
+
+      sidebar.classList.toggle("hidden");
+
+      if (sidebar.classList.contains("hidden")) {
+        icon.className = "fas fa-bars";
+        toggleBtn.title = "نمایش پنل";
+      } else {
+        icon.className = "fas fa-times";
+        toggleBtn.title = "مخفی کردن پنل";
+      }
+    });
+
+  document.getElementById("zoomInBtn").addEventListener("click", function () {
+    if (map) {
+      map.zoomIn();
+    }
+  });
+
+  document.getElementById("zoomOutBtn").addEventListener("click", function () {
+    if (map) {
+      map.zoomOut();
+    }
+  });
+
+  document
+    .getElementById("centerMapBtn")
+    .addEventListener("click", function () {
+      if (map && markers && markers.length > 0) {
+        const group = new L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      } else if (map) {
+        map.setView([35.699756, 51.338076], 14);
+      }
+    });
 }
 
 // Switch to search mode
@@ -293,28 +338,50 @@ function addMarkerToMap(location) {
 // Update locations list in UI
 function updateLocationsList() {
   const list = document.getElementById("locationsList");
+  const locationCount = document.getElementById("locationCount");
   list.innerHTML = "";
 
   locations.forEach((location) => {
     const li = document.createElement("li");
     const originBadge = location.isCurrentLocation
-      ? '<span style="background: #48bb78; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-right: 5px;">مبدا</span>'
+      ? '<span style="background: var(--color-success); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-right: 8px; font-weight: 600;">مبدا</span>'
       : "";
     const setOriginBtn = !location.isCurrentLocation
-      ? `<button class="set-origin-btn" onclick="setAsOrigin(${location.id})" title="تنظیم به عنوان مبدا">📍</button>`
+      ? `<button class="set-origin-btn" onclick="setAsOrigin(${location.id})" title="تنظیم به عنوان مبدا">
+           <i class="fas fa-home"></i>
+           <span>مبدا</span>
+         </button>`
       : "";
     li.innerHTML = `
-            <span class="location-name">${location.name} ${originBadge}</span>
+            <span class="location-name">
+              <i class="fas fa-map-marker-alt" style="color: var(--color-accent);"></i>
+              ${location.name} ${originBadge}
+            </span>
             <div class="location-actions">
                 ${setOriginBtn}
-                <button class="remove-btn" onclick="removeLocation(${location.id})">حذف</button>
+                <button class="remove-btn" onclick="removeLocation(${location.id})" title="حذف">
+                  <i class="fas fa-trash"></i>
+                  <span>حذف</span>
+                </button>
             </div>
         `;
     list.appendChild(li);
   });
 
+  // Update location count
+  locationCount.textContent = locations.length;
+
   // Enable/disable optimize button
-  document.getElementById("optimizeRouteBtn").disabled = locations.length < 2;
+  const optimizeBtn = document.getElementById("optimizeRouteBtn");
+  optimizeBtn.disabled = locations.length < 2;
+
+  if (locations.length < 2) {
+    optimizeBtn.style.opacity = "0.5";
+    optimizeBtn.style.cursor = "not-allowed";
+  } else {
+    optimizeBtn.style.opacity = "1";
+    optimizeBtn.style.cursor = "pointer";
+  }
 }
 
 // Set location as origin
@@ -359,7 +426,8 @@ function getCurrentLocation() {
   }
 
   const button = document.getElementById("getCurrentLocationBtn");
-  button.innerHTML = '<span class="loading"></span> در حال پیدا کردن...';
+  button.innerHTML =
+    '<div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;"></div> در حال پیدا کردن...';
   button.disabled = true;
 
   navigator.geolocation.getCurrentPosition(
@@ -370,12 +438,14 @@ function getCurrentLocation() {
       // Reverse geocoding to get address
       reverseGeocode(lat, lng);
 
-      button.innerHTML = "📍 موقعیت فعلی من";
+      button.innerHTML =
+        '<i class="fas fa-location-arrow"></i><span>موقعیت فعلی من</span>';
       button.disabled = false;
     },
     function (error) {
       showToast("خطا در دریافت موقعیت فعلی", "error");
-      button.innerHTML = "📍 موقعیت فعلی من";
+      button.innerHTML =
+        '<i class="fas fa-location-arrow"></i><span>موقعیت فعلی من</span>';
       button.disabled = false;
     }
   );
@@ -421,7 +491,8 @@ function optimizeRoute() {
   }
 
   const button = document.getElementById("optimizeRouteBtn");
-  button.innerHTML = '<span class="loading"></span> در حال بهینه‌سازی...';
+  button.innerHTML =
+    '<div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;"></div> در حال بهینه‌سازی...';
   button.disabled = true;
 
   // Send request to server for route optimization
@@ -465,7 +536,8 @@ function optimizeRoute() {
       showToast("خطا در بهینه‌سازی مسیر: " + error.message, "error");
     })
     .finally(() => {
-      button.innerHTML = "🚀 بهینه‌سازی مسیر";
+      button.innerHTML =
+        '<i class="fas fa-rocket"></i><span>بهینه‌سازی مسیر</span>';
       button.disabled = false;
     });
 }
@@ -515,9 +587,9 @@ async function drawRoute(optimizedOrder) {
         if (data.success && data.route) {
           // Draw polyline on map
           const routeLine = L.polyline(data.route, {
-            color: "#667eea",
-            weight: 5,
-            opacity: 0.7,
+            color: "#a3220b", // رنگ سبز زیبا
+            weight: 6,
+            opacity: 0.8,
           }).addTo(map);
 
           routeLines.push(routeLine);
@@ -532,9 +604,9 @@ async function drawRoute(optimizedOrder) {
               [to.lat, to.lng],
             ],
             {
-              color: "#667eea",
+              color: "#f59e0b", // رنگ نارنجی برای خط مستقیم
               weight: 5,
-              opacity: 0.5,
+              opacity: 0.6,
               dashArray: "10, 10",
             }
           ).addTo(map);
@@ -550,9 +622,9 @@ async function drawRoute(optimizedOrder) {
             [to.lat, to.lng],
           ],
           {
-            color: "#667eea",
+            color: "#f59e0b", // رنگ نارنجی برای خط مستقیم
             weight: 5,
-            opacity: 0.5,
+            opacity: 0.6,
             dashArray: "10, 10",
           }
         ).addTo(map);
@@ -660,27 +732,6 @@ function clearRoute() {
   document.getElementById("routeInfo").style.display = "none";
 }
 
-// Show route information
-function showRouteInfo(optimizedOrder, totalDistance) {
-  const routeInfo = document.getElementById("routeInfo");
-  const routeDetails = document.getElementById("routeDetails");
-
-  let routeText = "<strong>ترتیب بهینه مسیر:</strong><br><ol>";
-
-  optimizedOrder.forEach((location, index) => {
-    routeText += `<li>${location.name}</li>`;
-  });
-
-  routeText += "</ol>";
-  routeText += `<br><strong>مسافت کل:</strong> ${totalDistance.toFixed(
-    2
-  )} کیلومتر`;
-  routeText += `<br><strong>تعداد توقف‌ها:</strong> ${optimizedOrder.length}`;
-
-  routeDetails.innerHTML = routeText;
-  routeInfo.style.display = "block";
-}
-
 // Clear all locations
 function clearAllLocations() {
   if (locations.length === 0) {
@@ -703,18 +754,369 @@ function clearAllLocations() {
 
 // Show toast notification
 function showToast(message, type = "success") {
+  const toastContainer = document.getElementById("toastContainer");
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  toast.textContent = message;
 
-  document.body.appendChild(toast);
+  const icon =
+    type === "success"
+      ? "fas fa-check-circle"
+      : type === "error"
+      ? "fas fa-exclamation-circle"
+      : "fas fa-info-circle";
+
+  toast.innerHTML = `
+    <i class="${icon}" style="color: ${
+    type === "success"
+      ? "var(--color-success)"
+      : type === "error"
+      ? "var(--color-error)"
+      : "var(--color-accent)"
+  };"></i>
+    <span>${message}</span>
+  `;
+
+  toastContainer.appendChild(toast);
 
   // Show toast
   setTimeout(() => toast.classList.add("show"), 100);
 
-  // Hide toast after 3 seconds
+  // Hide toast after 4 seconds
   setTimeout(() => {
     toast.classList.remove("show");
-    setTimeout(() => document.body.removeChild(toast), 300);
-  }, 3000);
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
+  }, 4000);
+}
+
+// ============================================
+// NAVIGATION MODE
+// ============================================
+
+let navigationMode = false;
+let navigationWatchId = null;
+let currentRoute = null;
+let currentStepIndex = 0;
+let userLocationMarker = null;
+
+// Show start navigation button after route optimization
+function showRouteInfo(optimizedOrder, totalDistance) {
+  const routeInfo = document.getElementById("routeInfo");
+  const routeDetails = document.getElementById("routeDetails");
+  const startNavBtn = document.getElementById("startNavigationBtn");
+
+  let routeText = `
+    <div style="margin-bottom: 20px;">
+      <h4 style="color: var(--color-accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <i class="fas fa-route"></i>
+        ترتیب بهینه مسیر
+      </h4>
+      <ol style="margin: 0; padding-right: 20px;">
+  `;
+
+  optimizedOrder.forEach((location, index) => {
+    const isOrigin = location.isCurrentLocation
+      ? ' <span style="background: var(--color-success); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-right: 4px;">مبدا</span>'
+      : "";
+    routeText += `
+      <li style="margin-bottom: 8px; padding: 8px 12px; background: var(--color-surface); border-radius: 8px; border-right: 3px solid var(--color-accent);">
+        <span style="font-weight: 600; color: var(--color-text);">${
+          index + 1
+        }. ${location.name}${isOrigin}</span>
+      </li>
+    `;
+  });
+
+  routeText += `
+      </ol>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+      <div style="background: var(--color-surface); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--color-border);">
+        <div style="color: var(--color-accent); font-size: 24px; font-weight: 700; margin-bottom: 4px;">
+          ${totalDistance.toFixed(1)}
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: 14px;">
+          <i class="fas fa-road" style="margin-left: 4px;"></i>
+          کیلومتر
+        </div>
+      </div>
+      
+      <div style="background: var(--color-surface); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--color-border);">
+        <div style="color: var(--color-accent); font-size: 24px; font-weight: 700; margin-bottom: 4px;">
+          ${optimizedOrder.length}
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: 14px;">
+          <i class="fas fa-map-marker-alt" style="margin-left: 4px;"></i>
+          توقف
+        </div>
+      </div>
+    </div>
+  `;
+
+  routeDetails.innerHTML = routeText;
+  routeInfo.style.display = "block";
+
+  // Show navigation button
+  if (optimizedOrder.length >= 2) {
+    startNavBtn.style.display = "flex";
+    startNavBtn.onclick = startNavigation;
+  }
+}
+
+// Start navigation mode
+async function startNavigation() {
+  if (!locations || locations.length < 2) {
+    showToast("برای شروع مسیریابی حداقل 2 لوکیشن نیاز است", "error");
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    showToast("مرورگر شما از موقعیت‌یابی پشتیبانی نمی‌کند", "error");
+    return;
+  }
+
+  navigationMode = true;
+
+  // Hide sidebar and show navigation panel
+  document.querySelector(".sidebar").style.display = "none";
+  document.getElementById("navigationPanel").style.display = "block";
+
+  // Get current location first
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const userLat = position.coords.latitude;
+      const userLng = position.coords.longitude;
+
+      // Find nearest location or use optimized route
+      const optimizedRoute = await getOptimizedRouteFromCurrentLocation(
+        userLat,
+        userLng
+      );
+
+      if (optimizedRoute && optimizedRoute.length > 0) {
+        currentRoute = optimizedRoute;
+        currentStepIndex = 0;
+
+        // Start tracking user location
+        startLocationTracking();
+
+        // Get and display first route
+        await updateNavigationInstruction();
+
+        showToast("مسیریابی زنده شروع شد", "success");
+      } else {
+        showToast("خطا در محاسبه مسیر", "error");
+        stopNavigation();
+      }
+    },
+    (error) => {
+      showToast("خطا در دریافت موقعیت فعلی", "error");
+      stopNavigation();
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
+
+  // Setup stop button
+  document.getElementById("stopNavigationBtn").onclick = stopNavigation;
+}
+
+// Get optimized route from current location
+async function getOptimizedRouteFromCurrentLocation(lat, lng) {
+  // For simplicity, use the already optimized route
+  // In a real app, you'd recalculate from current position
+  return locations;
+}
+
+// Start tracking user location
+function startLocationTracking() {
+  if (!navigator.geolocation) return;
+
+  navigationWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const userLat = position.coords.latitude;
+      const userLng = position.coords.longitude;
+
+      // Update user marker on map
+      updateUserLocationMarker(userLat, userLng);
+
+      // Update navigation instruction based on current location
+      updateNavigationBasedOnLocation(userLat, userLng);
+
+      // Center map on user location
+      map.setView([userLat, userLng], 17);
+    },
+    (error) => {
+      console.error("Location tracking error:", error);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0,
+    }
+  );
+}
+
+// Update user location marker
+function updateUserLocationMarker(lat, lng) {
+  // Remove old marker
+  if (userLocationMarker) {
+    map.removeLayer(userLocationMarker);
+  }
+
+  // Create custom user location icon
+  const userIcon = L.divIcon({
+    className: "user-location-marker",
+    html: '<div style="width: 20px; height: 20px; background: #667eea; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(102, 126, 234, 0.6);"></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  // Add new marker
+  userLocationMarker = L.marker([lat, lng], { icon: userIcon })
+    .addTo(map)
+    .bindPopup("<b>موقعیت فعلی شما</b>");
+}
+
+// Update navigation instruction
+async function updateNavigationInstruction() {
+  if (!currentRoute || currentStepIndex >= currentRoute.length) {
+    // Reached destination
+    showToast("به مقصد رسیدید! 🎉", "success");
+    stopNavigation();
+    return;
+  }
+
+  const currentDestination = currentRoute[currentStepIndex];
+
+  // Get route to current destination
+  const response = await fetch("/api/get-route", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      origin:
+        currentStepIndex === 0 && userLocationMarker
+          ? {
+              lat: userLocationMarker.getLatLng().lat,
+              lng: userLocationMarker.getLatLng().lng,
+            }
+          : {
+              lat: currentRoute[currentStepIndex - 1].lat,
+              lng: currentRoute[currentStepIndex - 1].lng,
+            },
+      destination: { lat: currentDestination.lat, lng: currentDestination.lng },
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.success && data.route) {
+    // Update stats
+    document.getElementById(
+      "remainingDistance"
+    ).textContent = `${data.distance.toFixed(1)} کیلومتر`;
+    document.getElementById("remainingTime").textContent = `${Math.round(
+      data.duration / 60
+    )} دقیقه`;
+
+    // Update instruction
+    document.getElementById(
+      "instructionText"
+    ).textContent = `به سمت ${currentDestination.name} حرکت کنید`;
+    document.getElementById("instructionIcon").textContent = "→";
+
+    // Show next step if available
+    if (currentStepIndex + 1 < currentRoute.length) {
+      document.getElementById("nextStep").style.display = "block";
+      document.getElementById("nextStepText").textContent =
+        currentRoute[currentStepIndex + 1].name;
+    } else {
+      document.getElementById("nextStep").style.display = "none";
+    }
+  }
+}
+
+// Update navigation based on user location
+function updateNavigationBasedOnLocation(userLat, userLng) {
+  if (!currentRoute || currentStepIndex >= currentRoute.length) return;
+
+  const currentDestination = currentRoute[currentStepIndex];
+  const distance = calculateDistanceInMeters(
+    userLat,
+    userLng,
+    currentDestination.lat,
+    currentDestination.lng
+  );
+
+  // If within 50 meters of destination, move to next waypoint
+  if (distance < 50) {
+    currentStepIndex++;
+
+    if (currentStepIndex < currentRoute.length) {
+      showToast(`رسیدید به ${currentDestination.name}`, "success");
+      updateNavigationInstruction();
+    } else {
+      showToast("به مقصد نهایی رسیدید! 🎉", "success");
+      stopNavigation();
+    }
+  } else {
+    // Update remaining distance
+    document.getElementById("remainingDistance").textContent = `${(
+      distance / 1000
+    ).toFixed(1)} کیلومتر`;
+  }
+}
+
+// Calculate distance in meters
+function calculateDistanceInMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Stop navigation mode
+function stopNavigation() {
+  navigationMode = false;
+
+  // Stop location tracking
+  if (navigationWatchId) {
+    navigator.geolocation.clearWatch(navigationWatchId);
+    navigationWatchId = null;
+  }
+
+  // Remove user location marker
+  if (userLocationMarker) {
+    map.removeLayer(userLocationMarker);
+    userLocationMarker = null;
+  }
+
+  // Show sidebar and hide navigation panel
+  document.querySelector(".sidebar").style.display = "block";
+  document.getElementById("navigationPanel").style.display = "none";
+
+  // Reset zoom
+  if (markers && markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
+
+  currentRoute = null;
+  currentStepIndex = 0;
 }
