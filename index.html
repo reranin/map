@@ -30,18 +30,26 @@
     <div class="container">
 
         <div class="main-content">
-            <!-- Modern Sidebar -->
-            <div class="sidebar">
-                <!-- Location Input Card -->
-                <div class="card location-input-card">
-                    <div class="card-header">
-                        <div class="card-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <h3>اضافه کردن لوکیشن</h3>
+            <!-- Modern Sliding Menu -->
+            <div class="sliding-menu" id="slidingMenu">
+                <div class="menu-header">
+                    <div class="menu-logo">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <span>بهینه‌ساز مسیر</span>
                     </div>
+                    <button class="menu-toggle-btn" id="menuToggleBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
 
-                    <div class="card-content">
+                <div class="menu-content">
+                    <!-- Location Input Section -->
+                    <div class="menu-section">
+                        <div class="section-header">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <h3>اضافه کردن لوکیشن</h3>
+                        </div>
+
                         <!-- Toggle between search and manual coords -->
                         <div class="input-mode-toggle">
                             <button id="searchModeBtn" class="toggle-btn active">
@@ -99,19 +107,15 @@
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Locations List Card -->
-                <div class="card locations-list-card">
-                    <div class="card-header">
-                        <div class="card-icon">
+                    <!-- Locations List Section -->
+                    <div class="menu-section">
+                        <div class="section-header">
                             <i class="fas fa-list-ul"></i>
+                            <h3>لیست لوکیشن‌ها</h3>
+                            <div class="location-count" id="locationCount">0</div>
                         </div>
-                        <h3>لیست لوکیشن‌ها</h3>
-                        <div class="location-count" id="locationCount">0</div>
-                    </div>
 
-                    <div class="card-content">
                         <div class="locations-container">
                             <ul id="locationsList" class="locations-list"></ul>
                         </div>
@@ -127,18 +131,14 @@
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Route Info Card -->
-                <div class="card route-info-card" id="routeInfo" style="display: none;">
-                    <div class="card-header">
-                        <div class="card-icon">
+                    <!-- Route Info Section -->
+                    <div class="menu-section" id="routeInfo" style="display: none;">
+                        <div class="section-header">
                             <i class="fas fa-route"></i>
+                            <h3>اطلاعات مسیر</h3>
                         </div>
-                        <h3>اطلاعات مسیر</h3>
-                    </div>
 
-                    <div class="card-content">
                         <div id="routeDetails" class="route-details"></div>
                         <button id="startNavigationBtn" class="navigation-btn" style="display: none;">
                             <i class="fas fa-navigation"></i>
@@ -148,13 +148,16 @@
                 </div>
             </div>
 
+            <!-- Menu Trigger Button -->
+            <button class="menu-trigger" id="menuTrigger">
+                <i class="fas fa-bars"></i>
+                <span>منو</span>
+            </button>
+
             <!-- Map Container -->
             <div class="map-container">
                 <div class="map-header">
                     <div class="map-controls">
-                        <button class="map-control-btn" id="toggleSidebarBtn" title="نمایش/مخفی کردن پنل">
-                            <i class="fas fa-bars"></i>
-                        </button>
                         <button class="map-control-btn" id="zoomInBtn" title="بزرگنمایی">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -228,6 +231,9 @@
 
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- Menu Overlay -->
+    <div id="menuOverlay" class="menu-overlay"></div>
 
     <script src="script.js"></script>
 </body>

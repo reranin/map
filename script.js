@@ -105,6 +105,41 @@ function initializeMap() {
   }
 }
 
+// Menu control functions
+function openMenu() {
+  const menu = document.getElementById("slidingMenu");
+  const trigger = document.getElementById("menuTrigger");
+  const overlay = document.getElementById("menuOverlay");
+  
+  menu.classList.add("open");
+  trigger.classList.add("hidden");
+  
+  // Show overlay
+  if (overlay) {
+    overlay.classList.add("active");
+  }
+  
+  // Prevent body scroll
+  document.body.style.overflow = "hidden";
+}
+
+function closeMenu() {
+  const menu = document.getElementById("slidingMenu");
+  const trigger = document.getElementById("menuTrigger");
+  const overlay = document.getElementById("menuOverlay");
+  
+  menu.classList.remove("open");
+  trigger.classList.remove("hidden");
+  
+  // Hide overlay
+  if (overlay) {
+    overlay.classList.remove("active");
+  }
+  
+  // Restore body scroll
+  document.body.style.overflow = "";
+}
+
 // Setup event listeners
 function setupEventListeners() {
   document
@@ -165,24 +200,28 @@ function setupEventListeners() {
       }
     });
 
-  // Map controls
-  document
-    .getElementById("toggleSidebarBtn")
-    .addEventListener("click", function () {
-      const sidebar = document.querySelector(".sidebar");
-      const toggleBtn = document.getElementById("toggleSidebarBtn");
-      const icon = toggleBtn.querySelector("i");
-
-      sidebar.classList.toggle("hidden");
-
-      if (sidebar.classList.contains("hidden")) {
-        icon.className = "fas fa-bars";
-        toggleBtn.title = "نمایش پنل";
-      } else {
-        icon.className = "fas fa-times";
-        toggleBtn.title = "مخفی کردن پنل";
-      }
-    });
+  // Menu controls
+  document.getElementById("menuTrigger").addEventListener("click", openMenu);
+  document.getElementById("menuToggleBtn").addEventListener("click", closeMenu);
+  
+  // Close menu when clicking outside or on overlay
+  document.addEventListener("click", function(event) {
+    const menu = document.getElementById("slidingMenu");
+    const trigger = document.getElementById("menuTrigger");
+    const overlay = document.getElementById("menuOverlay");
+    
+    if ((!menu.contains(event.target) && !trigger.contains(event.target) && menu.classList.contains("open")) ||
+        (event.target === overlay)) {
+      closeMenu();
+    }
+  });
+  
+  // Close menu with Escape key
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+      closeMenu();
+    }
+  });
 
   document.getElementById("zoomInBtn").addEventListener("click", function () {
     if (map) {
@@ -881,8 +920,8 @@ async function startNavigation() {
 
   navigationMode = true;
 
-  // Hide sidebar and show navigation panel
-  document.querySelector(".sidebar").style.display = "none";
+  // Hide menu and show navigation panel
+  closeMenu();
   document.getElementById("navigationPanel").style.display = "block";
 
   // Get current location first
@@ -1107,8 +1146,8 @@ function stopNavigation() {
     userLocationMarker = null;
   }
 
-  // Show sidebar and hide navigation panel
-  document.querySelector(".sidebar").style.display = "block";
+  // Show menu trigger and hide navigation panel
+  document.getElementById("menuTrigger").classList.remove("hidden");
   document.getElementById("navigationPanel").style.display = "none";
 
   // Reset zoom
