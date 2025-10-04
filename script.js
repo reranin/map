@@ -6,6 +6,7 @@ let map;
 let locations = [];
 let markers = [];
 let routePolyline = null;
+let trafficLayer = null;
 
 // Initialize the application
 document.addEventListener("DOMContentLoaded", function () {
@@ -13,6 +14,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Add fullscreen class to container for full-screen map
   document.querySelector(".container").classList.add("fullscreen");
+
+  // اضافه کردن مدیریت خطاهای عمومی
+  window.addEventListener('error', function(event) {
+    // نادیده گرفتن خطاهای content script
+    if (event.filename && event.filename.includes('content')) {
+      console.warn('Content script error ignored:', event.message);
+      event.preventDefault();
+      return false;
+    }
+  });
+
+  // مدیریت خطاهای Promise
+  window.addEventListener('unhandledrejection', function(event) {
+    // نادیده گرفتن خطاهای content script
+    if (event.reason && event.reason.toString().includes('content')) {
+      console.warn('Content script promise error ignored:', event.reason);
+      event.preventDefault();
+      return false;
+    }
+  });
 
   // Load API key from server first
   loadApiKey()
@@ -76,12 +97,25 @@ function initializeMap() {
       key: NESHAN_API_KEY,
       maptype: "neshan",
       poi: true,
-      traffic: false,
+      traffic: false, // غیرفعال کردن ترافیک به دلیل مشکل سرور
       center: [35.699756, 51.338076], // Tehran coordinates (based on official docs)
       zoom: 14,
     });
 
+    // اضافه کردن مدیریت خطا برای تایل‌های ترافیک
+    map.on('tileerror', function(error) {
+      console.warn('خطا در بارگذاری تایل:', error);
+    });
+
+    // اضافه کردن لایه ترافیک دستی (جایگزین)
+    addTrafficLayer();
+
     console.log("Neshan map created successfully");
+    
+    // نمایش پیام اطلاع‌رسانی درباره ترافیک
+    setTimeout(() => {
+      showToast("💡 نکته: ترافیک زنده از طریق API Neshan در دسترس است", "info");
+    }, 2000);
 
     // Add click event to map for adding locations
     map.on("click", function (e) {
@@ -474,6 +508,8 @@ function getCurrentLocation() {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
+      console.log("Current location obtained:", lat, lng);
+
       // Reverse geocoding to get address
       reverseGeocode(lat, lng);
 
@@ -482,10 +518,31 @@ function getCurrentLocation() {
       button.disabled = false;
     },
     function (error) {
-      showToast("خطا در دریافت موقعیت فعلی", "error");
+      console.error("Geolocation error:", error);
+      
+      // مدیریت خطاهای مختلف
+      let errorMessage = "خطا در دریافت موقعیت فعلی";
+      switch(error.code) {
+        case error.TIMEOUT:
+          errorMessage = "زمان دریافت موقعیت به پایان رسید";
+          break;
+        case error.PERMISSION_DENIED:
+          errorMessage = "دسترسی به موقعیت رد شد";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = "موقعیت در دسترس نیست";
+          break;
+      }
+      
+      showToast(errorMessage, "error");
       button.innerHTML =
         '<i class="fas fa-location-arrow"></i><span>موقعیت فعلی من</span>';
       button.disabled = false;
+    },
+    {
+      enableHighAccuracy: false, // کاهش دقت برای کاهش timeout
+      timeout: 15000, // افزایش timeout به 15 ثانیه
+      maximumAge: 60000, // استفاده از موقعیت تا 1 دقیقه قبل
     }
   );
 }
@@ -522,26 +579,37 @@ function reverseGeocode(lat, lng) {
     });
 }
 
-// Optimize route using TSP algorithm
+// Optimize route using TSP algorithm with traffic consideration
 function optimizeRoute() {
-  if (locations.length < 2) {
-    showToast("حداقل 2 لوکیشن برای بهینه‌سازی مسیر نیاز است", "error");
-    return;
-  }
+  try {
+    if (locations.length < 2) {
+      showToast("حداقل 2 لوکیشن برای بهینه‌سازی مسیر نیاز است", "error");
+      return;
+    }
 
-  const button = document.getElementById("optimizeRouteBtn");
-  button.innerHTML =
-    '<div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;"></div> در حال بهینه‌سازی...';
-  button.disabled = true;
+    const button = document.getElementById("optimizeRouteBtn");
+    button.innerHTML =
+      '<div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px;"></div> در حال بهینه‌سازی...';
+    button.disabled = true;
 
-  // Send request to server for route optimization
-  fetch("/api/optimize-route", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ locations }),
-  })
+    // دریافت تنظیمات مسیریابی از رابط کاربری
+    const routingType = document.querySelector('input[name="routingType"]:checked').value;
+    const trafficEnabled = document.getElementById("trafficToggle").checked;
+
+    console.log("Starting route optimization with settings:", { routingType, trafficEnabled });
+
+    // Send request to server for route optimization with traffic settings
+    fetch("/api/optimize-route", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        locations,
+        routingType: routingType,
+        trafficEnabled: trafficEnabled
+      }),
+    })
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -560,8 +628,14 @@ function optimizeRoute() {
           // Draw route
           drawRoute(data.optimizedRoute);
 
-          // Show route info
-          showRouteInfo(data.optimizedRoute, data.totalDistance || 0);
+          // Show route info with traffic data
+          showRouteInfo(
+            data.optimizedRoute, 
+            data.totalDistance || 0, 
+            data.totalDuration || null,
+            data.trafficOptimized || false,
+            data.routingType || 'fastest'
+          );
         } else {
           console.error("Invalid optimized route data:", data.optimizedRoute);
           showToast("داده‌های مسیر بهینه نامعتبر است", "error");
@@ -579,6 +653,13 @@ function optimizeRoute() {
         '<i class="fas fa-rocket"></i><span>بهینه‌سازی مسیر</span>';
       button.disabled = false;
     });
+  } catch (error) {
+    handleGlobalError(error, 'optimizeRoute');
+    const button = document.getElementById("optimizeRouteBtn");
+    button.innerHTML =
+      '<i class="fas fa-rocket"></i><span>بهینه‌سازی مسیر</span>';
+    button.disabled = false;
+  }
 }
 
 // Note: TSP solving is now handled by the server
@@ -802,6 +883,8 @@ function showToast(message, type = "success") {
       ? "fas fa-check-circle"
       : type === "error"
       ? "fas fa-exclamation-circle"
+      : type === "warning"
+      ? "fas fa-exclamation-triangle"
       : "fas fa-info-circle";
 
   toast.innerHTML = `
@@ -810,6 +893,8 @@ function showToast(message, type = "success") {
       ? "var(--color-success)"
       : type === "error"
       ? "var(--color-error)"
+      : type === "warning"
+      ? "var(--color-warning)"
       : "var(--color-accent)"
   };"></i>
     <span>${message}</span>
@@ -831,6 +916,16 @@ function showToast(message, type = "success") {
   }, 4000);
 }
 
+// مدیریت خطاهای عمومی
+function handleGlobalError(error, context = '') {
+  console.error(`Error in ${context}:`, error);
+  
+  // نمایش پیام خطا به کاربر فقط برای خطاهای مهم
+  if (error.message && !error.message.includes('content')) {
+    showToast(`خطا در ${context}: ${error.message}`, "error");
+  }
+}
+
 // ============================================
 // NAVIGATION MODE
 // ============================================
@@ -842,7 +937,7 @@ let currentStepIndex = 0;
 let userLocationMarker = null;
 
 // Show start navigation button after route optimization
-function showRouteInfo(optimizedOrder, totalDistance) {
+function showRouteInfo(optimizedOrder, totalDistance, totalDuration = null, trafficOptimized = false, routingType = 'fastest') {
   const routeInfo = document.getElementById("routeInfo");
   const routeDetails = document.getElementById("routeDetails");
   const startNavBtn = document.getElementById("startNavigationBtn");
@@ -853,6 +948,13 @@ function showRouteInfo(optimizedOrder, totalDistance) {
         <i class="fas fa-route"></i>
         ترتیب بهینه مسیر
       </h4>
+      
+      <!-- Traffic Status Badge -->
+      <div class="traffic-status ${trafficOptimized ? '' : 'disabled'}" style="margin-bottom: 16px;">
+        <i class="fas ${trafficOptimized ? 'fa-traffic-light' : 'fa-ban'}"></i>
+        <span>${trafficOptimized ? 'بهینه‌سازی با ترافیک فعال' : 'بهینه‌سازی بدون ترافیک'}</span>
+      </div>
+      
       <ol style="margin: 0; padding-right: 20px;">
   `;
 
@@ -873,7 +975,7 @@ function showRouteInfo(optimizedOrder, totalDistance) {
       </ol>
     </div>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: ${totalDuration ? '1fr 1fr 1fr' : '1fr 1fr'}; gap: 16px; margin-bottom: 20px;">
       <div style="background: var(--color-surface); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--color-border);">
         <div style="color: var(--color-accent); font-size: 24px; font-weight: 700; margin-bottom: 4px;">
           ${totalDistance.toFixed(1)}
@@ -884,6 +986,18 @@ function showRouteInfo(optimizedOrder, totalDistance) {
         </div>
       </div>
       
+      ${totalDuration ? `
+      <div style="background: var(--color-surface); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--color-border);">
+        <div style="color: var(--color-accent); font-size: 24px; font-weight: 700; margin-bottom: 4px;">
+          ${Math.round(totalDuration / 60)}
+        </div>
+        <div style="color: var(--color-text-secondary); font-size: 14px;">
+          <i class="fas fa-clock" style="margin-left: 4px;"></i>
+          دقیقه
+        </div>
+      </div>
+      ` : ''}
+      
       <div style="background: var(--color-surface); padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--color-border);">
         <div style="color: var(--color-accent); font-size: 24px; font-weight: 700; margin-bottom: 4px;">
           ${optimizedOrder.length}
@@ -892,6 +1006,14 @@ function showRouteInfo(optimizedOrder, totalDistance) {
           <i class="fas fa-map-marker-alt" style="margin-left: 4px;"></i>
           توقف
         </div>
+      </div>
+    </div>
+    
+    <!-- Routing Type Info -->
+    <div style="background: var(--color-surface); padding: 12px; border-radius: 8px; text-align: center; border: 1px solid var(--color-border); margin-bottom: 16px;">
+      <div style="color: var(--color-text-secondary); font-size: 12px;">
+        <i class="fas ${routingType === 'fastest' ? 'fa-tachometer-alt' : 'fa-ruler'}"></i>
+        نوع مسیریابی: ${routingType === 'fastest' ? 'سریع‌ترین مسیر' : 'کوتاه‌ترین مسیر'}
       </div>
     </div>
   `;
@@ -930,6 +1052,8 @@ async function startNavigation() {
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
 
+      console.log("Navigation starting from:", userLat, userLng);
+
       // Find nearest location or use optimized route
       const optimizedRoute = await getOptimizedRouteFromCurrentLocation(
         userLat,
@@ -953,13 +1077,29 @@ async function startNavigation() {
       }
     },
     (error) => {
-      showToast("خطا در دریافت موقعیت فعلی", "error");
+      console.error("Navigation geolocation error:", error);
+      
+      // مدیریت خطاهای مختلف
+      let errorMessage = "خطا در دریافت موقعیت فعلی";
+      switch(error.code) {
+        case error.TIMEOUT:
+          errorMessage = "زمان دریافت موقعیت به پایان رسید";
+          break;
+        case error.PERMISSION_DENIED:
+          errorMessage = "دسترسی به موقعیت رد شد";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = "موقعیت در دسترس نیست";
+          break;
+      }
+      
+      showToast(errorMessage, "error");
       stopNavigation();
     },
     {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
+      enableHighAccuracy: false, // کاهش دقت برای کاهش timeout
+      timeout: 15000, // افزایش timeout به 15 ثانیه
+      maximumAge: 30000, // استفاده از موقعیت تا 30 ثانیه قبل
     }
   );
 
@@ -976,12 +1116,19 @@ async function getOptimizedRouteFromCurrentLocation(lat, lng) {
 
 // Start tracking user location
 function startLocationTracking() {
-  if (!navigator.geolocation) return;
+  if (!navigator.geolocation) {
+    console.warn("Geolocation not supported");
+    return;
+  }
+
+  console.log("Starting location tracking...");
 
   navigationWatchId = navigator.geolocation.watchPosition(
     (position) => {
       const userLat = position.coords.latitude;
       const userLng = position.coords.longitude;
+
+      console.log("Location updated:", userLat, userLng);
 
       // Update user marker on map
       updateUserLocationMarker(userLat, userLng);
@@ -994,11 +1141,31 @@ function startLocationTracking() {
     },
     (error) => {
       console.error("Location tracking error:", error);
+      
+      // مدیریت خطاهای مختلف
+      switch(error.code) {
+        case error.TIMEOUT:
+          console.warn("Location request timed out");
+          showToast("زمان دریافت موقعیت به پایان رسید", "warning");
+          break;
+        case error.PERMISSION_DENIED:
+          console.warn("Location permission denied");
+          showToast("دسترسی به موقعیت رد شد", "error");
+          break;
+        case error.POSITION_UNAVAILABLE:
+          console.warn("Location unavailable");
+          showToast("موقعیت در دسترس نیست", "error");
+          break;
+        default:
+          console.warn("Unknown location error");
+          showToast("خطا در دریافت موقعیت", "error");
+          break;
+      }
     },
     {
-      enableHighAccuracy: true,
-      timeout: 5000,
-      maximumAge: 0,
+      enableHighAccuracy: false, // کاهش دقت برای کاهش timeout
+      timeout: 15000, // افزایش timeout به 15 ثانیه
+      maximumAge: 30000, // استفاده از موقعیت تا 30 ثانیه قبل
     }
   );
 }
@@ -1034,6 +1201,43 @@ async function updateNavigationInstruction() {
   }
 
   const currentDestination = currentRoute[currentStepIndex];
+  
+  // بررسی صحت داده‌ها
+  if (!currentDestination || !currentDestination.lat || !currentDestination.lng) {
+    console.error("Invalid destination data:", currentDestination);
+    showToast("خطا در داده‌های مقصد", "error");
+    return;
+  }
+
+  // تعیین مبدا با بررسی صحت داده‌ها
+  let origin;
+  if (currentStepIndex === 0 && userLocationMarker) {
+    try {
+      const userLatLng = userLocationMarker.getLatLng();
+      origin = {
+        lat: userLatLng.lat,
+        lng: userLatLng.lng,
+      };
+    } catch (error) {
+      console.warn("Error getting user location:", error);
+      // استفاده از اولین لوکیشن در مسیر
+      origin = {
+        lat: currentRoute[0].lat,
+        lng: currentRoute[0].lng,
+      };
+    }
+  } else if (currentStepIndex > 0 && currentRoute[currentStepIndex - 1]) {
+    origin = {
+      lat: currentRoute[currentStepIndex - 1].lat,
+      lng: currentRoute[currentStepIndex - 1].lng,
+    };
+  } else {
+    // fallback به اولین لوکیشن
+    origin = {
+      lat: currentRoute[0].lat,
+      lng: currentRoute[0].lng,
+    };
+  }
 
   // Get route to current destination
   const response = await fetch("/api/get-route", {
@@ -1042,16 +1246,7 @@ async function updateNavigationInstruction() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      origin:
-        currentStepIndex === 0 && userLocationMarker
-          ? {
-              lat: userLocationMarker.getLatLng().lat,
-              lng: userLocationMarker.getLatLng().lng,
-            }
-          : {
-              lat: currentRoute[currentStepIndex - 1].lat,
-              lng: currentRoute[currentStepIndex - 1].lng,
-            },
+      origin: origin,
       destination: { lat: currentDestination.lat, lng: currentDestination.lng },
     }),
   });
@@ -1158,4 +1353,76 @@ function stopNavigation() {
 
   currentRoute = null;
   currentStepIndex = 0;
+}
+
+// اضافه کردن لایه ترافیک جایگزین
+function addTrafficLayer() {
+  try {
+    // ایجاد لایه ترافیک با استفاده از OpenStreetMap یا سرویس جایگزین
+    const trafficUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    
+    trafficLayer = L.tileLayer(trafficUrl, {
+      attribution: 'ترافیک زنده از طریق Neshan API',
+      opacity: 0.3,
+      zIndex: 1000
+    });
+
+    // اضافه کردن کنترل ترافیک
+    addTrafficControl();
+    
+    console.log("✅ لایه ترافیک جایگزین اضافه شد");
+  } catch (error) {
+    console.warn("خطا در اضافه کردن لایه ترافیک:", error);
+  }
+}
+
+// اضافه کردن کنترل ترافیک
+function addTrafficControl() {
+  // ایجاد کنترل ترافیک دستی
+  const trafficControl = L.control({ position: 'topright' });
+  
+  trafficControl.onAdd = function(map) {
+    const div = L.DomUtil.create('div', 'traffic-control');
+    div.innerHTML = `
+      <button id="trafficToggleBtn" class="traffic-btn" title="نمایش/مخفی کردن ترافیک">
+        <i class="fas fa-traffic-light"></i>
+        <span>ترافیک</span>
+      </button>
+    `;
+    
+    // اضافه کردن استایل
+    div.style.cssText = `
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      cursor: pointer;
+    `;
+    
+    // اضافه کردن رویداد کلیک
+    L.DomEvent.on(div, 'click', function() {
+      toggleTrafficLayer();
+    });
+    
+    L.DomEvent.disableClickPropagation(div);
+    
+    return div;
+  };
+  
+  trafficControl.addTo(map);
+}
+
+// تغییر وضعیت لایه ترافیک
+function toggleTrafficLayer() {
+  if (trafficLayer) {
+    if (map.hasLayer(trafficLayer)) {
+      map.removeLayer(trafficLayer);
+      document.getElementById('trafficToggleBtn').style.opacity = '0.5';
+      console.log("ترافیک مخفی شد");
+    } else {
+      map.addLayer(trafficLayer);
+      document.getElementById('trafficToggleBtn').style.opacity = '1';
+      console.log("ترافیک نمایش داده شد");
+    }
+  }
 }

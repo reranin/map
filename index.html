@@ -120,6 +120,55 @@
                             <ul id="locationsList" class="locations-list"></ul>
                         </div>
 
+                        <!-- Routing Options Section -->
+                        <div class="menu-section">
+                            <div class="section-header">
+                                <i class="fas fa-cog"></i>
+                                <h3>تنظیمات مسیریابی</h3>
+                            </div>
+                            
+                            <div class="routing-options">
+                                <div class="option-group">
+                                    <label class="option-label">
+                                        <i class="fas fa-route"></i>
+                                        نوع مسیریابی
+                                    </label>
+                                    <div class="radio-group">
+                                        <label class="radio-option">
+                                            <input type="radio" name="routingType" value="fastest" checked>
+                                            <span class="radio-custom"></span>
+                                            <span class="radio-text">
+                                                <i class="fas fa-clock"></i>
+                                                سریع‌ترین مسیر
+                                            </span>
+                                        </label>
+                                        <label class="radio-option">
+                                            <input type="radio" name="routingType" value="shortest">
+                                            <span class="radio-custom"></span>
+                                            <span class="radio-text">
+                                                <i class="fas fa-ruler"></i>
+                                                کوتاه‌ترین مسیر
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="option-group">
+                                    <label class="option-label">
+                                        <i class="fas fa-traffic-light"></i>
+                                        در نظر گیری ترافیک
+                                    </label>
+                                    <div class="toggle-switch">
+                                        <input type="checkbox" id="trafficToggle" checked>
+                                        <label for="trafficToggle" class="toggle-label">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                        <span class="toggle-text">فعال</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="actions">
                             <button id="optimizeRouteBtn" class="primary-btn">
                                 <i class="fas fa-rocket"></i>

@@ -228,9 +228,18 @@ app.post("/api/get-route", async (req, res) => {
     }
 
     try {
-      // Use Neshan Direction API v4
+      // Use Neshan Direction API v4 with traffic optimization
       // Based on: https://platform.neshan.org/api/direction/
-      const directionUrl = `${config.NESHAN_BASE_URL}/v4/direction?type=car&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`;
+      let directionUrl = `${config.NESHAN_BASE_URL}/v4/direction?type=car&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`;
+      
+      // اضافه کردن پارامترهای ترافیک (فقط اگر ترافیک فعال باشد)
+      if (config.ENABLE_TRAFFIC) {
+        directionUrl += `&avoid_traffic=${config.AVOID_TRAFFIC}`;
+        directionUrl += `&routing_type=${config.ROUTING_TYPE}`;
+        console.log("🚦 Using traffic-aware routing");
+      } else {
+        console.log("📍 Using standard routing (traffic disabled)");
+      }
 
       console.log("Calling Neshan Direction API:", directionUrl);
 
@@ -364,10 +373,10 @@ function decodePolyline(encoded) {
   return points;
 }
 
-// Route optimization API endpoint
-app.post("/api/optimize-route", (req, res) => {
+// Route optimization API endpoint with traffic consideration
+app.post("/api/optimize-route", async (req, res) => {
   try {
-    const { locations } = req.body;
+    const { locations, routingType, trafficEnabled } = req.body;
 
     if (!locations || locations.length < 2) {
       return res
@@ -375,23 +384,52 @@ app.post("/api/optimize-route", (req, res) => {
         .json({ error: "حداقل 2 لوکیشن برای بهینه‌سازی مسیر نیاز است" });
     }
 
-    const optimizedOrder = solveTSP(locations);
+    // تنظیمات موقت برای این درخواست
+    const tempConfig = {
+      ...config,
+      ENABLE_TRAFFIC: trafficEnabled !== undefined ? trafficEnabled : config.ENABLE_TRAFFIC,
+      ROUTING_TYPE: routingType || config.ROUTING_TYPE
+    };
 
-    // Calculate total distance
-    let totalDistance = 0;
-    for (let i = 0; i < optimizedOrder.length - 1; i++) {
-      totalDistance += calculateDistance(
-        optimizedOrder[i],
-        optimizedOrder[i + 1]
-      );
+    console.log(`🚦 Route optimization request: Traffic=${tempConfig.ENABLE_TRAFFIC}, Type=${tempConfig.ROUTING_TYPE}`);
+
+    // اگر ترافیک فعال است، از الگوریتم پیشرفته استفاده کن
+    if (tempConfig.ENABLE_TRAFFIC && locations.length <= 8) {
+      const optimizedOrder = await solveTSPWithTraffic(locations, tempConfig);
+      
+      // محاسبه زمان و مسافت کل با در نظر گیری ترافیک
+      const routeStats = await calculateRouteStatsWithTraffic(optimizedOrder, tempConfig);
+      
+      res.json({
+        success: true,
+        optimizedRoute: optimizedOrder,
+        totalDistance: routeStats.totalDistance,
+        totalDuration: routeStats.totalDuration,
+        totalStops: optimizedOrder.length,
+        trafficOptimized: true,
+        routingType: tempConfig.ROUTING_TYPE,
+      });
+    } else {
+      // برای تعداد زیاد لوکیشن یا زمانی که ترافیک غیرفعال است، از الگوریتم ساده استفاده کن
+      const optimizedOrder = solveTSP(locations);
+
+      // Calculate total distance
+      let totalDistance = 0;
+      for (let i = 0; i < optimizedOrder.length - 1; i++) {
+        totalDistance += calculateDistance(
+          optimizedOrder[i],
+          optimizedOrder[i + 1]
+        );
+      }
+
+      res.json({
+        success: true,
+        optimizedRoute: optimizedOrder,
+        totalDistance: totalDistance,
+        totalStops: optimizedOrder.length,
+        trafficOptimized: false,
+      });
     }
-
-    res.json({
-      success: true,
-      optimizedRoute: optimizedOrder,
-      totalDistance: totalDistance,
-      totalStops: optimizedOrder.length,
-    });
   } catch (error) {
     console.error("Route optimization error:", error);
     res.status(500).json({ error: "خطا در بهینه‌سازی مسیر" });
@@ -455,6 +493,157 @@ function solveTSP(locations) {
   );
 
   return result;
+}
+
+// TSP solver with traffic consideration
+async function solveTSPWithTraffic(locations, tempConfig = config) {
+  if (locations.length <= 2) return locations;
+
+  console.log("🚦 Solving TSP with traffic optimization...");
+  
+  // محاسبه ماتریس هزینه با در نظر گیری ترافیک
+  const costMatrix = await calculateTrafficCostMatrix(locations, tempConfig);
+  
+  // استفاده از الگوریتم nearest neighbor با ماتریس هزینه ترافیک
+  const visited = new Set();
+  const result = [];
+
+  // پیدا کردن مبدا (موقعیت فعلی یا اولین لوکیشن)
+  let startLocation = locations.find((loc) => loc.isCurrentLocation === true) || locations[0];
+  
+  let current = startLocation;
+  result.push(current);
+  visited.add(current.id);
+
+  // پیدا کردن نزدیک‌ترین لوکیشن غیر بازدید شده بر اساس هزینه ترافیک
+  while (visited.size < locations.length) {
+    let nearest = null;
+    let minCost = Infinity;
+
+    for (const location of locations) {
+      if (!visited.has(location.id)) {
+        const cost = costMatrix[current.id][location.id];
+        if (cost < minCost) {
+          minCost = cost;
+          nearest = location;
+        }
+      }
+    }
+
+    if (nearest) {
+      result.push(nearest);
+      visited.add(nearest.id);
+      current = nearest;
+    }
+  }
+
+  console.log("✅ TSP with traffic optimization completed");
+  return result;
+}
+
+// محاسبه ماتریس هزینه با در نظر گیری ترافیک
+async function calculateTrafficCostMatrix(locations, tempConfig = config) {
+  const matrix = {};
+  
+  for (let i = 0; i < locations.length; i++) {
+    matrix[locations[i].id] = {};
+    
+    for (let j = 0; j < locations.length; j++) {
+      if (i === j) {
+        matrix[locations[i].id][locations[j].id] = 0;
+      } else {
+        try {
+          // دریافت اطلاعات مسیر با ترافیک از Neshan API
+          const routeData = await getRouteWithTraffic(locations[i], locations[j], tempConfig);
+          
+          // محاسبه هزینه بر اساس نوع مسیریابی
+          let cost;
+          if (tempConfig.ROUTING_TYPE === 'fastest') {
+            // برای سریع‌ترین مسیر، زمان مهم‌تر است
+            cost = routeData.duration * tempConfig.TRAFFIC_WEIGHT + routeData.distance;
+          } else {
+            // برای کوتاه‌ترین مسیر، فاصله مهم‌تر است
+            cost = routeData.distance * tempConfig.TRAFFIC_WEIGHT + routeData.duration;
+          }
+          
+          matrix[locations[i].id][locations[j].id] = cost;
+        } catch (error) {
+          console.warn(`خطا در محاسبه هزینه بین ${locations[i].name} و ${locations[j].name}:`, error.message);
+          // fallback به محاسبه فاصله مستقیم
+          matrix[locations[i].id][locations[j].id] = calculateDistance(locations[i], locations[j]) * 10;
+        }
+      }
+    }
+  }
+  
+  return matrix;
+}
+
+// دریافت اطلاعات مسیر با ترافیک
+async function getRouteWithTraffic(origin, destination, tempConfig = config) {
+  try {
+    let directionUrl = `${tempConfig.NESHAN_BASE_URL}/v4/direction?type=car&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}`;
+    
+    if (tempConfig.ENABLE_TRAFFIC) {
+      directionUrl += `&avoid_traffic=${tempConfig.AVOID_TRAFFIC}`;
+      directionUrl += `&routing_type=${tempConfig.ROUTING_TYPE}`;
+    }
+
+    const response = await axios.get(directionUrl, {
+      headers: {
+        "Api-Key": config.NESHAN_SERVICE_API_KEY,
+      },
+    });
+
+    if (response.data && response.data.routes && response.data.routes.length > 0) {
+      const route = response.data.routes[0];
+      
+      let totalDistance = 0;
+      let totalDuration = 0;
+      
+      if (route.legs && route.legs.length > 0) {
+        route.legs.forEach((leg) => {
+          if (leg.distance && leg.distance.value) {
+            totalDistance += leg.distance.value;
+          }
+          if (leg.duration && leg.duration.value) {
+            totalDuration += leg.duration.value;
+          }
+        });
+      }
+
+      return {
+        distance: totalDistance / 1000, // تبدیل به کیلومتر
+        duration: totalDuration, // زمان بر حسب ثانیه
+      };
+    }
+  } catch (error) {
+    console.warn("خطا در دریافت مسیر با ترافیک:", error.message);
+  }
+  
+  // fallback به محاسبه فاصله مستقیم
+  const distance = calculateDistance(origin, destination);
+  return {
+    distance: distance,
+    duration: distance * 60, // فرض: 60 ثانیه به ازای هر کیلومتر
+  };
+}
+
+// محاسبه آمار مسیر با در نظر گیری ترافیک
+async function calculateRouteStatsWithTraffic(optimizedOrder, tempConfig = config) {
+  let totalDistance = 0;
+  let totalDuration = 0;
+
+  for (let i = 0; i < optimizedOrder.length - 1; i++) {
+    const routeData = await getRouteWithTraffic(optimizedOrder[i], optimizedOrder[i + 1], tempConfig);
+    totalDistance += routeData.distance;
+    totalDuration += routeData.duration;
+  }
+
+  return {
+    totalDistance: totalDistance,
+    totalDuration: totalDuration,
+  };
 }
 
 // Calculate distance between two points (Haversine formula)

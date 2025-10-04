@@ -15,4 +15,10 @@ module.exports = {
 
   PORT: process.env.PORT || 3000,
   NESHAN_BASE_URL: process.env.NESHAN_BASE_URL || "https://api.neshan.org",
+  
+  // Traffic Optimization Settings
+  ENABLE_TRAFFIC: process.env.ENABLE_TRAFFIC === 'true' || false, // غیرفعال به دلیل مشکل سرور
+  ROUTING_TYPE: process.env.ROUTING_TYPE || 'fastest', // 'fastest' or 'shortest'
+  AVOID_TRAFFIC: process.env.AVOID_TRAFFIC === 'true' || true,
+  TRAFFIC_WEIGHT: parseFloat(process.env.TRAFFIC_WEIGHT) || 1.5,
 };
