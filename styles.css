@@ -16,11 +16,11 @@
     --glass-border: rgba(255, 255, 255, 0.15);
     --glass-bg: rgba(34, 34, 44, 0.6);
 
-    --color-accent: #1cbbe2;
-    --color-accent-alt: #1cbbe2;
-    --color-accent-alt-opacity: #1cbae233;
-    --color-accent-hover: #16a8c7;
-    --color-accent-rgb: 28, 187, 226;
+    --color-accent: #023441;
+    --color-accent-alt: #1d202a;
+    --color-accent-alt-opacity: #02344133;
+    --color-accent-hover: #034a5a;
+    --color-accent-rgb: 2, 52, 65;
     --color-success: #28a745;
     --color-success-hover: #218838;
     --color-warning: #ffc107;
@@ -49,7 +49,7 @@ body.light-mode {
     --glass-border: rgba(0, 0, 0, 0.15);
     --glass-bg: rgba(255, 255, 255, 0.7);
 
-    --color-accent-hover: #0f8ba8;
+    --color-accent-hover: #034a5a;
     --color-success-hover: #1e7e34;
     --color-error-hover: #bd2130;
 }
@@ -77,13 +77,13 @@ button {
 }
 
 [dir="rtl"] body {
-    background-image: radial-gradient(circle at 10% 10%, var(--color-accent-alt) 0, transparent 25%),
-        radial-gradient(circle at 90% 80%, var(--color-accent) 0, transparent 25%);
+    background-image: radial-gradient(circle at 10% 10%, #1d202a 0, transparent 25%),
+        radial-gradient(circle at 90% 80%, #023441 0, transparent 25%);
 }
 
 [dir="ltr"] body {
-    background-image: radial-gradient(circle at 90% 10%, var(--color-accent-alt) 0, transparent 25%),
-        radial-gradient(circle at 10% 80%, var(--color-accent) 0, transparent 25%);
+    background-image: radial-gradient(circle at 90% 10%, #1d202a 0, transparent 25%),
+        radial-gradient(circle at 10% 80%, #023441 0, transparent 25%);
 }
 
 /* Background Animation */
@@ -108,7 +108,7 @@ button {
 .shape {
     position: absolute;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--color-accent-alt-opacity), transparent);
+    background: linear-gradient(135deg, rgba(2, 52, 65, 0.2), transparent);
     animation: float 20s infinite linear;
 }
 
@@ -224,7 +224,7 @@ button {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     border-bottom: 1px solid var(--glass-border);
     position: relative;
     z-index: 1;
@@ -369,7 +369,7 @@ button {
     top: 20px;
     right: 20px;
     z-index: 1500;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     color: white;
     border: none;
     border-radius: 50px;
@@ -388,7 +388,7 @@ button {
 
 .menu-trigger:hover {
     transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 15px 35px rgba(28, 187, 226, 0.4);
+    box-shadow: 0 15px 35px rgba(2, 52, 65, 0.4);
 }
 
 .menu-trigger.hidden {
@@ -554,7 +554,7 @@ button {
 .add-manual-btn,
 .current-location-btn {
     padding: 8px 12px;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     color: white;
     border: none;
     border-radius: 6px;
@@ -574,7 +574,7 @@ button {
 .current-location-btn:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
+    background: linear-gradient(135deg, #034a5a 0%, #023441 100%);
 }
 
 .current-location-btn {
@@ -705,14 +705,14 @@ button {
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     color: white;
 }
 
 .primary-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
+    background: linear-gradient(135deg, #034a5a 0%, #023441 100%);
 }
 
 .primary-btn:disabled {
@@ -749,7 +749,7 @@ button {
 .navigation-btn {
     width: 100%;
     padding: 8px 12px;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     color: white;
     border: none;
     border-radius: 6px;
@@ -767,8 +767,8 @@ button {
 
 .navigation-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(28, 187, 226, 0.4);
-    background: linear-gradient(135deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
+    box-shadow: 0 10px 25px rgba(2, 52, 65, 0.4);
+    background: linear-gradient(135deg, #034a5a 0%, #023441 100%);
 }
 
 /* Map Container */
@@ -874,7 +874,7 @@ button {
 
 .nav-title h3 {
     margin: 0;
-    color: var(--color-accent);
+    color: #023441;
     font-size: 1rem;
     font-weight: 600;
 }
@@ -919,7 +919,7 @@ button {
 .stat-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     border-radius: 10px;
     display: flex;
     align-items: center;
@@ -943,7 +943,7 @@ button {
     display: block;
     font-size: 1.2rem;
     font-weight: 700;
-    color: var(--color-accent);
+    color: #023441;
 }
 
 .nav-instruction {
@@ -951,7 +951,7 @@ button {
     align-items: center;
     gap: 16px;
     padding: 20px;
-    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-alt) 100%);
+    background: linear-gradient(135deg, #023441 0%, #1d202a 100%);
     border-radius: 16px;
     color: white;
     margin-bottom: 16px;
@@ -1009,7 +1009,7 @@ button {
     width: 50px;
     height: 50px;
     border: 4px solid rgba(255, 255, 255, 0.3);
-    border-top: 4px solid var(--color-accent);
+    border-top: 4px solid #023441;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
@@ -1068,7 +1068,7 @@ button {
 }
 
 .toast.info {
-    border-right: 4px solid var(--color-accent);
+    border-right: 4px solid #023441;
 }
 
 /* Custom Scrollbar */
@@ -1328,14 +1328,19 @@ button {
 /* Focus States */
 button:focus,
 input:focus {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid #023441;
     outline-offset: 2px;
 }
 
 /* Selection */
 ::selection {
-    background: var(--color-accent-alt-opacity);
+    background: rgba(2, 52, 65, 0.2);
     color: var(--color-text);
+}
+
+/* Hide Leaflet Default Controls */
+.leaflet-control-zoom {
+    display: none !important;
 }
 
 /* Print Styles */
