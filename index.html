@@ -43,12 +43,39 @@
                 </div>
 
                 <div class="menu-content">
-                    <!-- Location Input Section -->
-                    <div class="menu-section">
-                        <div class="section-header">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <h3>اضافه کردن لوکیشن</h3>
+                        <!-- Database Locations Section -->
+                        <div class="menu-section">
+                            <div class="section-header">
+                                <i class="fas fa-database"></i>
+                                <h3>موقعیت‌های از پیش تعریف شده</h3>
+                            </div>
+                            
+                            <div class="database-locations">
+                                <div class="search-container">
+                                    <input type="text" id="locationSearch" placeholder="جستجو در موقعیت‌ها..." class="search-input">
+                                    <button id="searchBtn" class="search-btn">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="category-filter">
+                                    <select id="categoryFilter" class="category-select">
+                                        <option value="">همه دسته‌بندی‌ها</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="locations-grid" id="databaseLocations">
+                                    <!-- موقعیت‌ها اینجا نمایش داده می‌شوند -->
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Location Input Section -->
+                        <div class="menu-section">
+                            <div class="section-header">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <h3>اضافه کردن لوکیشن دستی</h3>
+                            </div>
 
                         <!-- Toggle between search and manual coords -->
                         <div class="input-mode-toggle">

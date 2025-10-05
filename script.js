@@ -7,6 +7,22 @@ let locations = [];
 let markers = [];
 let routePolyline = null;
 let trafficLayer = null;
+let databaseLocations = [];
+let categories = [];
+
+// آرایه رنگ‌های مختلف برای مسیرها
+const routeColors = [
+  "#e53e3e", // قرمز
+  "#3182ce", // آبی
+  "#38a169", // سبز
+  "#d69e2e", // زرد
+  "#805ad5", // بنفش
+  "#dd6b20", // نارنجی
+  "#319795", // فیروزه‌ای
+  "#e53e3e", // صورتی
+  "#4a5568", // خاکستری
+  "#2d3748", // تیره
+];
 
 // Initialize the application
 document.addEventListener("DOMContentLoaded", function () {
@@ -43,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
         console.log("Leaflet is available, initializing map...");
         initializeMap();
         setupEventListeners();
+        loadDatabaseData();
       } else {
         console.log("Leaflet not available yet, waiting...");
         // Wait for SDK to load
@@ -52,6 +69,7 @@ document.addEventListener("DOMContentLoaded", function () {
             clearInterval(checkSDK);
             initializeMap();
             setupEventListeners();
+            loadDatabaseData();
           }
         }, 100);
 
@@ -234,6 +252,21 @@ function setupEventListeners() {
       }
     });
 
+  // Database search functionality
+  document
+    .getElementById("searchBtn")
+    .addEventListener("click", searchDatabaseLocations);
+  document
+    .getElementById("locationSearch")
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        searchDatabaseLocations();
+      }
+    });
+  document
+    .getElementById("categoryFilter")
+    .addEventListener("change", filterDatabaseLocations);
+
   // Menu controls
   document.getElementById("menuTrigger").addEventListener("click", openMenu);
   document.getElementById("menuToggleBtn").addEventListener("click", closeMenu);
@@ -244,9 +277,16 @@ function setupEventListeners() {
     const trigger = document.getElementById("menuTrigger");
     const overlay = document.getElementById("menuOverlay");
     
-    if ((!menu.contains(event.target) && !trigger.contains(event.target) && menu.classList.contains("open")) ||
-        (event.target === overlay)) {
-      closeMenu();
+    // بررسی اینکه آیا کلیک روی دکمه‌های داخل منو بوده یا نه
+    const clickedInsideMenu = menu && menu.contains(event.target);
+    const clickedTrigger = trigger && trigger.contains(event.target);
+    const clickedOverlay = event.target === overlay;
+    
+    // فقط منو را ببند اگر کلیک خارج از منو بوده است
+    if (menu && menu.classList.contains("open") && !clickedInsideMenu && !clickedTrigger) {
+      if (clickedOverlay) {
+        closeMenu();
+      }
     }
   });
   
@@ -387,6 +427,7 @@ function addLocation(name, lat, lng, isCurrentLocation = false) {
     lat: lat,
     lng: lng,
     isCurrentLocation: isCurrentLocation,
+    isDestination: false, // اضافه کردن فیلد مقصد
   };
 
   locations.push(location);
@@ -397,13 +438,32 @@ function addLocation(name, lat, lng, isCurrentLocation = false) {
 
 // Add marker to map
 function addMarkerToMap(location) {
+  const popupContent = `
+    <div style="text-align: right; direction: rtl; min-width: 200px;">
+      <div style="margin-bottom: 12px;">
+        <b style="color: var(--color-accent); font-size: 16px;">${location.name}</b><br>
+        <span style="color: var(--color-text-secondary); font-size: 12px;">
+          ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}
+        </span>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: center;">
+        <button class="popup-nav-btn google-maps-popup" onclick="openSingleLocationInGoogleMaps('${location.lat},${location.lng}', '${location.name}')" title="گوگل مپ">
+          <i class="fab fa-google"></i>
+        </button>
+        <button class="popup-nav-btn waze-popup" onclick="openInWaze('${location.lat},${location.lng}', '${location.name}')" title="ویز">
+          <i class="fas fa-car"></i>
+        </button>
+        <button class="popup-nav-btn neshan-popup" onclick="openInNeshan('${location.lat},${location.lng}', '${location.name}')" title="نشان">
+          <i class="fas fa-map"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
   const marker = L.marker([location.lat, location.lng])
     .addTo(map)
-    .bindPopup(
-      `<b>${location.name}</b><br>${location.lat.toFixed(
-        6
-      )}, ${location.lng.toFixed(6)}`
-    );
+    .bindPopup(popupContent);
 
   markers.push(marker);
 }
@@ -416,22 +476,39 @@ function updateLocationsList() {
 
   locations.forEach((location) => {
     const li = document.createElement("li");
+    
+    // نمایش badge های مبدا و مقصد
     const originBadge = location.isCurrentLocation
       ? '<span style="background: var(--color-success); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-right: 8px; font-weight: 600;">مبدا</span>'
       : "";
+    const destinationBadge = location.isDestination
+      ? '<span style="background: var(--color-warning); color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-right: 8px; font-weight: 600;">مقصد</span>'
+      : "";
+    
+    // دکمه تنظیم مبدا (فقط اگر مبدا نباشد)
     const setOriginBtn = !location.isCurrentLocation
       ? `<button class="set-origin-btn" onclick="setAsOrigin(${location.id})" title="تنظیم به عنوان مبدا">
            <i class="fas fa-home"></i>
            <span>مبدا</span>
          </button>`
       : "";
+    
+    // دکمه تنظیم مقصد (فقط اگر مقصد نباشد)
+    const setDestinationBtn = !location.isDestination
+      ? `<button class="set-destination-btn" onclick="setAsDestination(${location.id})" title="تنظیم به عنوان مقصد">
+           <i class="fas fa-flag-checkered"></i>
+           <span>مقصد</span>
+         </button>`
+      : "";
+    
     li.innerHTML = `
             <span class="location-name">
               <i class="fas fa-map-marker-alt" style="color: var(--color-accent);"></i>
-              ${location.name} ${originBadge}
+              ${location.name} ${originBadge}${destinationBadge}
             </span>
             <div class="location-actions">
                 ${setOriginBtn}
+                ${setDestinationBtn}
                 <button class="remove-btn" onclick="removeLocation(${location.id})" title="حذف">
                   <i class="fas fa-trash"></i>
                   <span>حذف</span>
@@ -470,6 +547,22 @@ function setAsOrigin(locationId) {
     location.isCurrentLocation = true;
     updateLocationsList();
     showToast(`"${location.name}" به عنوان مبدا تنظیم شد`);
+  }
+}
+
+// Set location as destination
+function setAsDestination(locationId) {
+  // Remove destination flag from all locations
+  locations.forEach((loc) => {
+    loc.isDestination = false;
+  });
+
+  // Set the selected location as destination
+  const location = locations.find((loc) => loc.id === locationId);
+  if (location) {
+    location.isDestination = true;
+    updateLocationsList();
+    showToast(`"${location.name}" به عنوان مقصد تنظیم شد`);
   }
 }
 
@@ -705,9 +798,12 @@ async function drawRoute(optimizedOrder) {
         const data = await response.json();
 
         if (data.success && data.route) {
+          // انتخاب رنگ بر اساس شماره مقصد (i + 1)
+          const routeColor = routeColors[(i + 1) % routeColors.length];
+          
           // Draw polyline on map
           const routeLine = L.polyline(data.route, {
-            color: "#a3220b", // رنگ سبز زیبا
+            color: routeColor,
             weight: 6,
             opacity: 0.8,
           }).addTo(map);
@@ -718,13 +814,17 @@ async function drawRoute(optimizedOrder) {
           console.warn(
             `Could not get route from ${from.name} to ${to.name}, drawing straight line`
           );
+          
+          // انتخاب رنگ بر اساس شماره مقصد (i + 1)
+          const routeColor = routeColors[(i + 1) % routeColors.length];
+          
           const straightLine = L.polyline(
             [
               [from.lat, from.lng],
               [to.lat, to.lng],
             ],
             {
-              color: "#f59e0b", // رنگ نارنجی برای خط مستقیم
+              color: routeColor,
               weight: 5,
               opacity: 0.6,
               dashArray: "10, 10",
@@ -736,13 +836,17 @@ async function drawRoute(optimizedOrder) {
       } catch (error) {
         console.error(`Error getting route segment ${i}:`, error);
         // Fallback: draw straight line
+        
+        // انتخاب رنگ بر اساس شماره مقصد (i + 1)
+        const routeColor = routeColors[(i + 1) % routeColors.length];
+        
         const straightLine = L.polyline(
           [
             [from.lat, from.lng],
             [to.lat, to.lng],
           ],
           {
-            color: "#f59e0b", // رنگ نارنجی برای خط مستقیم
+            color: routeColor,
             weight: 5,
             opacity: 0.6,
             dashArray: "10, 10",
@@ -785,11 +889,14 @@ function updateMarkerNumbers(optimizedOrder) {
 
   // Add new markers with numbers
   optimizedOrder.forEach((location, index) => {
+    // انتخاب رنگ بر اساس شماره مکان (متناسب با رنگ خط مسیر)
+    const markerColor = routeColors[index % routeColors.length];
+    
     const markerIcon = L.divIcon({
       className: "custom-marker",
       html: `
         <div style="
-          background: #667eea;
+          background: ${markerColor};
           color: white;
           border: 3px solid white;
           border-radius: 50%;
@@ -807,14 +914,32 @@ function updateMarkerNumbers(optimizedOrder) {
       iconAnchor: [17, 17],
     });
 
+    const popupContent = `
+      <div style="text-align: right; direction: rtl; min-width: 200px;">
+        <div style="margin-bottom: 12px;">
+          <b style="color: var(--color-accent); font-size: 16px;">توقف ${index + 1}: ${location.name}</b><br>
+          <span style="color: var(--color-text-secondary); font-size: 12px;">
+            ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}
+          </span>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button class="popup-nav-btn google-maps-popup" onclick="openSingleLocationInGoogleMaps('${location.lat},${location.lng}', '${location.name}')" title="گوگل مپ">
+            <i class="fab fa-google"></i>
+          </button>
+          <button class="popup-nav-btn waze-popup" onclick="openInWaze('${location.lat},${location.lng}', '${location.name}')" title="ویز">
+            <i class="fas fa-car"></i>
+          </button>
+          <button class="popup-nav-btn neshan-popup" onclick="openInNeshan('${location.lat},${location.lng}', '${location.name}')" title="نشان">
+            <i class="fas fa-map"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
     const marker = L.marker([location.lat, location.lng], { icon: markerIcon })
       .addTo(map)
-      .bindPopup(
-        `<div style="text-align: right; direction: rtl;">
-          <b>توقف ${index + 1}: ${location.name}</b><br>
-          مختصات: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}
-        </div>`
-      );
+      .bindPopup(popupContent);
 
     markers.push(marker);
   });
@@ -936,6 +1061,114 @@ let currentRoute = null;
 let currentStepIndex = 0;
 let userLocationMarker = null;
 
+// باز کردن مسیر در گوگل مپ
+function openInGoogleMaps(optimizedOrder) {
+  if (!optimizedOrder || optimizedOrder.length < 2) {
+    showToast("حداقل 2 مکان برای مسیریابی نیاز است", "error");
+    return;
+  }
+
+  try {
+    // ایجاد URL گوگل مپ
+    let googleMapsUrl = "https://www.google.com/maps/dir/";
+    
+    // اضافه کردن مختصات مکان‌ها
+    optimizedOrder.forEach((location, index) => {
+      googleMapsUrl += `${location.lat},${location.lng}`;
+      if (index < optimizedOrder.length - 1) {
+        googleMapsUrl += "/";
+      }
+    });
+    
+    // اضافه کردن پارامترهای اضافی
+    googleMapsUrl += "/@35.699756,51.338076,12z";
+    
+    // باز کردن در تب جدید
+    window.open(googleMapsUrl, "_blank");
+    
+    showToast("مسیر در گوگل مپ باز شد", "success");
+  } catch (error) {
+    console.error("خطا در باز کردن گوگل مپ:", error);
+    showToast("خطا در باز کردن گوگل مپ", "error");
+  }
+}
+
+// باز کردن مکان واحد در گوگل مپ
+function openSingleLocationInGoogleMaps(coordinates, locationName) {
+  try {
+    // ایجاد URL گوگل مپ برای مکان واحد
+    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${coordinates}`;
+    
+    // باز کردن در تب جدید
+    window.open(googleMapsUrl, "_blank");
+    
+    showToast(`"${locationName}" در گوگل مپ باز شد`, "success");
+  } catch (error) {
+    console.error("خطا در باز کردن گوگل مپ:", error);
+    showToast("خطا در باز کردن گوگل مپ", "error");
+  }
+}
+
+// باز کردن مکان در ویز
+function openInWaze(coordinates, locationName) {
+  try {
+    // ایجاد URL ویز
+    const wazeUrl = `https://waze.com/ul?ll=${coordinates}&navigate=yes`;
+    
+    // باز کردن در تب جدید
+    window.open(wazeUrl, "_blank");
+    
+    showToast(`"${locationName}" در ویز باز شد`, "success");
+  } catch (error) {
+    console.error("خطا در باز کردن ویز:", error);
+    showToast("خطا در باز کردن ویز", "error");
+  }
+}
+
+// باز کردن مکان در نشان
+function openInNeshan(coordinates, locationName) {
+  try {
+    // تقسیم مختصات
+    const [lat, lng] = coordinates.split(',');
+    
+    // ایجاد URL برای اپلیکیشن نشان
+    const neshanAppUrl = `neshan://route?dlat=${lat}&dlng=${lng}&navigation=true`;
+    
+    // ایجاد URL برای وب‌سایت نشان
+    const neshanWebUrl = `https://neshan.org/maps/routing/car/destination/${coordinates}`;
+    
+    // بررسی اینکه آیا کاربر در موبایل است یا نه
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // در موبایل: ابتدا سعی کن اپلیکیشن را باز کن
+      const tempLink = document.createElement('a');
+      tempLink.href = neshanAppUrl;
+      tempLink.style.display = 'none';
+      document.body.appendChild(tempLink);
+      
+      // کلیک روی لینک برای باز کردن اپلیکیشن
+      tempLink.click();
+      
+      // حذف لینک موقت
+      document.body.removeChild(tempLink);
+      
+      // اگر اپلیکیشن باز نشد، بعد از 2 ثانیه وب‌سایت را باز کن
+      setTimeout(() => {
+        window.open(neshanWebUrl, "_blank");
+      }, 2000);
+    } else {
+      // در دسکتاپ: مستقیماً وب‌سایت را باز کن
+      window.open(neshanWebUrl, "_blank");
+    }
+    
+    showToast(`"${locationName}" در نشان باز شد`, "success");
+  } catch (error) {
+    console.error("خطا در باز کردن نشان:", error);
+    showToast("خطا در باز کردن نشان", "error");
+  }
+}
+
 // Show start navigation button after route optimization
 function showRouteInfo(optimizedOrder, totalDistance, totalDuration = null, trafficOptimized = false, routingType = 'fastest') {
   const routeInfo = document.getElementById("routeInfo");
@@ -962,11 +1195,17 @@ function showRouteInfo(optimizedOrder, totalDistance, totalDuration = null, traf
     const isOrigin = location.isCurrentLocation
       ? ' <span style="background: var(--color-success); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-right: 4px;">مبدا</span>'
       : "";
+    const isDestination = location.isDestination
+      ? ' <span style="background: var(--color-warning); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; margin-right: 4px;">مقصد</span>'
+      : "";
     routeText += `
-      <li style="margin-bottom: 8px; padding: 8px 12px; background: var(--color-surface); border-radius: 8px; border-right: 3px solid var(--color-accent);">
+      <li style="margin-bottom: 8px; padding: 8px 12px; background: var(--color-surface); border-radius: 8px; border-right: 3px solid var(--color-accent); display: flex; align-items: center; justify-content: space-between;">
         <span style="font-weight: 600; color: var(--color-text);">${
           index + 1
-        }. ${location.name}${isOrigin}</span>
+        }. ${location.name}${isOrigin}${isDestination}</span>
+        <button class="google-maps-small-btn" onclick="openSingleLocationInGoogleMaps('${location.lat},${location.lng}', '${location.name}')" title="مشاهده در گوگل مپ">
+          <i class="fab fa-google"></i>
+        </button>
       </li>
     `;
   });
@@ -1423,6 +1662,352 @@ function toggleTrafficLayer() {
       map.addLayer(trafficLayer);
       document.getElementById('trafficToggleBtn').style.opacity = '1';
       console.log("ترافیک نمایش داده شد");
+    }
+  }
+}
+
+// ============================================
+// DATABASE MANAGEMENT
+// ============================================
+
+// بارگذاری داده‌های دیتابیس
+async function loadDatabaseData() {
+  try {
+    console.log("🔄 در حال بارگذاری داده‌های دیتابیس...");
+    
+    // بارگذاری دسته‌بندی‌ها
+    await loadCategories();
+    
+    // بارگذاری موقعیت‌ها
+    await loadDatabaseLocations();
+    
+    console.log("✅ داده‌های دیتابیس بارگذاری شدند");
+  } catch (error) {
+    console.error("خطا در بارگذاری داده‌های دیتابیس:", error);
+    showToast("خطا در بارگذاری موقعیت‌های دیتابیس", "error");
+  }
+}
+
+// بارگذاری دسته‌بندی‌ها
+async function loadCategories() {
+  try {
+    const response = await fetch("/api/categories");
+    const data = await response.json();
+    
+    if (data.success) {
+      categories = data.categories;
+      populateCategoryFilter();
+      console.log(`✅ ${categories.length} دسته‌بندی بارگذاری شد`);
+    }
+  } catch (error) {
+    console.error("خطا در بارگذاری دسته‌بندی‌ها:", error);
+  }
+}
+
+// پر کردن فیلتر دسته‌بندی
+function populateCategoryFilter() {
+  const categoryFilter = document.getElementById("categoryFilter");
+  categoryFilter.innerHTML = '<option value="">همه دسته‌بندی‌ها</option>';
+  
+  categories.forEach(category => {
+    const option = document.createElement("option");
+    option.value = category.id;
+    option.textContent = category.name;
+    categoryFilter.appendChild(option);
+  });
+}
+
+// بارگذاری موقعیت‌های دیتابیس
+async function loadDatabaseLocations(categoryId = null, searchTerm = null) {
+  try {
+    showLoadingState();
+    
+    let url = "/api/locations";
+    const params = new URLSearchParams();
+    
+    if (categoryId) {
+      params.append("category_id", categoryId);
+    }
+    if (searchTerm) {
+      params.append("search", searchTerm);
+    }
+    
+    if (params.toString()) {
+      url += "?" + params.toString();
+    }
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.success) {
+      databaseLocations = data.locations;
+      renderDatabaseLocations();
+      console.log(`✅ ${databaseLocations.length} موقعیت بارگذاری شد`);
+    }
+  } catch (error) {
+    console.error("خطا در بارگذاری موقعیت‌ها:", error);
+    showErrorState();
+  }
+}
+
+// جستجوی موقعیت‌ها
+async function searchDatabaseLocations() {
+  const searchTerm = document.getElementById("locationSearch").value.trim();
+  const categoryId = document.getElementById("categoryFilter").value;
+  
+  await loadDatabaseLocations(categoryId, searchTerm);
+}
+
+// فیلتر کردن موقعیت‌ها بر اساس دسته‌بندی
+async function filterDatabaseLocations() {
+  const categoryId = document.getElementById("categoryFilter").value;
+  const searchTerm = document.getElementById("locationSearch").value.trim();
+  
+  await loadDatabaseLocations(categoryId, searchTerm);
+}
+
+// نمایش حالت بارگذاری
+function showLoadingState() {
+  const container = document.getElementById("databaseLocations");
+  container.innerHTML = `
+    <div class="locations-loading">
+      <i class="fas fa-spinner fa-spin" style="margin-left: 8px;"></i>
+      در حال بارگذاری موقعیت‌ها...
+    </div>
+  `;
+}
+
+// نمایش حالت خطا
+function showErrorState() {
+  const container = document.getElementById("databaseLocations");
+  container.innerHTML = `
+    <div class="locations-empty">
+      <i class="fas fa-exclamation-triangle"></i>
+      <p>خطا در بارگذاری موقعیت‌ها</p>
+    </div>
+  `;
+}
+
+// رندر کردن موقعیت‌های دیتابیس
+function renderDatabaseLocations() {
+  const container = document.getElementById("databaseLocations");
+  
+  if (databaseLocations.length === 0) {
+    container.innerHTML = `
+      <div class="locations-empty">
+        <i class="fas fa-map-marker-alt"></i>
+        <p>هیچ موقعیتی پیدا نشد</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = databaseLocations.map(location => `
+    <div class="location-card" data-location-id="${location.id}">
+      <div class="location-card-header">
+        <div class="location-icon" style="background-color: ${location.color}">
+          <i class="${location.icon}"></i>
+        </div>
+        <div>
+          <h4 class="location-name">${location.name}</h4>
+          <p class="location-category">${location.category_name}</p>
+        </div>
+      </div>
+      
+      <p class="location-description">${location.description || 'توضیحی موجود نیست'}</p>
+      
+      <div class="location-address">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>${location.address || 'آدرس موجود نیست'}</span>
+      </div>
+      
+      ${location.rating > 0 ? `
+        <div class="location-rating">
+          <i class="fas fa-star"></i>
+          <span>${location.rating.toFixed(1)}</span>
+        </div>
+      ` : ''}
+      
+      <div class="location-actions">
+        ${isLocationAdded(location.id) ? `
+          <button class="remove-location-btn" onclick="removeLocationFromDatabase(${location.id})">
+            <i class="fas fa-trash"></i>
+            <span>حذف</span>
+          </button>
+        ` : `
+          <button class="add-location-btn" onclick="addLocationFromDatabase(${location.id})">
+            <i class="fas fa-plus"></i>
+            <span>اضافه کردن</span>
+          </button>
+        `}
+        <button class="view-details-btn" onclick="viewLocationDetails(${location.id})">
+          <i class="fas fa-info"></i>
+          <span>جزئیات</span>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// بررسی وجود مکان در آرایه locations
+function isLocationAdded(locationId) {
+  return locations.some(loc => loc.databaseId === locationId);
+}
+
+// اضافه کردن موقعیت از دیتابیس
+function addLocationFromDatabase(locationId, event) {
+  // جلوگیری از انتشار event به والدین
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  const location = databaseLocations.find(loc => loc.id === locationId);
+  
+  if (location) {
+    const newLocation = {
+      id: Date.now(),
+      databaseId: locationId, // ذخیره ID دیتابیس برای شناسایی
+      name: location.name,
+      lat: location.latitude,
+      lng: location.longitude,
+      isCurrentLocation: false,
+      isDestination: false, // اضافه کردن فیلد مقصد
+    };
+    
+    locations.push(newLocation);
+    updateLocationsList();
+    addMarkerToMap(newLocation);
+    showToast(`لوکیشن "${location.name}" اضافه شد`);
+    
+    // بروزرسانی فقط دکمه کلیک شده
+    updateLocationButton(locationId, true);
+  }
+}
+
+// حذف موقعیت از آرایه locations
+function removeLocationFromDatabase(locationId, event) {
+  // جلوگیری از انتشار event به والدین
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  
+  const index = locations.findIndex(loc => loc.databaseId === locationId);
+  
+  if (index !== -1) {
+    const location = locations[index];
+    locations.splice(index, 1);
+    
+    // حذف marker از نقشه
+    if (markers[index]) {
+      map.removeLayer(markers[index]);
+      markers.splice(index, 1);
+    }
+    
+    updateLocationsList();
+    clearRoute();
+    showToast(`لوکیشن "${location.name}" حذف شد`);
+    
+    // بروزرسانی فقط دکمه کلیک شده
+    updateLocationButton(locationId, false);
+  }
+}
+
+// بروزرسانی دکمه مکان بدون رندر مجدد
+function updateLocationButton(locationId, isAdded) {
+  const locationCard = document.querySelector(`.location-card[data-location-id="${locationId}"]`);
+  if (!locationCard) return;
+  
+  const actionsDiv = locationCard.querySelector('.location-actions');
+  if (!actionsDiv) return;
+  
+  // پیدا کردن دکمه فعلی
+  const currentBtn = actionsDiv.querySelector('.add-location-btn, .remove-location-btn');
+  if (!currentBtn) return;
+  
+  // ایجاد دکمه جدید
+  const newBtn = document.createElement('button');
+  
+  if (isAdded) {
+    // تبدیل به دکمه حذف
+    newBtn.className = 'remove-location-btn';
+    newBtn.onclick = (event) => removeLocationFromDatabase(locationId, event);
+    newBtn.innerHTML = `
+      <i class="fas fa-trash"></i>
+      <span>حذف</span>
+    `;
+  } else {
+    // تبدیل به دکمه اضافه کردن
+    newBtn.className = 'add-location-btn';
+    newBtn.onclick = (event) => addLocationFromDatabase(locationId, event);
+    newBtn.innerHTML = `
+      <i class="fas fa-plus"></i>
+      <span>اضافه کردن</span>
+    `;
+  }
+  
+  // جایگزینی دکمه
+  currentBtn.replaceWith(newBtn);
+}
+
+// نمایش جزئیات موقعیت
+function viewLocationDetails(locationId) {
+  const location = databaseLocations.find(loc => loc.id === locationId);
+  
+  if (location) {
+    const details = `
+      <div style="text-align: right; direction: rtl;">
+        <h3 style="color: var(--color-accent); margin-bottom: 16px;">${location.name}</h3>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>دسته‌بندی:</strong> ${location.category_name}
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>توضیحات:</strong><br>
+          ${location.description || 'توضیحی موجود نیست'}
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>آدرس:</strong><br>
+          ${location.address || 'آدرس موجود نیست'}
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+          <strong>مختصات:</strong><br>
+          عرض: ${location.latitude.toFixed(6)}<br>
+          طول: ${location.longitude.toFixed(6)}
+        </div>
+        
+        ${location.rating > 0 ? `
+          <div style="margin-bottom: 12px;">
+            <strong>امتیاز:</strong> ${location.rating.toFixed(1)} ⭐
+          </div>
+        ` : ''}
+        
+        ${location.phone ? `
+          <div style="margin-bottom: 12px;">
+            <strong>تلفن:</strong> ${location.phone}
+          </div>
+        ` : ''}
+        
+        ${location.website ? `
+          <div style="margin-bottom: 12px;">
+            <strong>وب‌سایت:</strong> <a href="${location.website}" target="_blank">${location.website}</a>
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    // نمایش جزئیات در popup
+    if (map) {
+      const marker = L.marker([location.latitude, location.longitude])
+        .addTo(map)
+        .bindPopup(details)
+        .openPopup();
+      
+      map.setView([location.latitude, location.longitude], 16);
     }
   }
 }

@@ -1029,7 +1029,7 @@ button {
 .toast-container {
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    left: 20px;
     z-index: 10000;
     display: flex;
     flex-direction: column-reverse;
@@ -1168,7 +1168,7 @@ button {
 
     .toast-container {
         bottom: 15px;
-        right: 15px;
+        left: 15px;
     }
 
     .toast {
@@ -1269,7 +1269,7 @@ button {
 
     .toast-container {
         bottom: 10px;
-        right: 10px;
+        left: 10px;
     }
 
     .toast {
@@ -1341,6 +1341,238 @@ input:focus {
 /* Hide Leaflet Default Controls */
 .leaflet-control-zoom {
     display: none !important;
+}
+
+/* Database Locations Styles */
+.database-locations {
+    padding: 16px 0;
+}
+
+.search-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    transition: var(--transition-fast);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(2, 52, 65, 0.2);
+}
+
+.search-btn {
+    padding: 12px 16px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.search-btn:hover {
+    background: var(--color-accent-hover);
+}
+
+.category-filter {
+    margin-bottom: 16px;
+}
+
+.category-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.category-select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(2, 52, 65, 0.2);
+}
+
+.locations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+.location-card {
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.location-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-accent);
+}
+
+.location-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.location-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.location-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--color-text);
+    margin: 0;
+}
+
+.location-category {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin: 4px 0 0 0;
+}
+
+.location-description {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.location-address {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.location-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-warning);
+}
+
+.location-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.add-location-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.add-location-btn:hover {
+    background: var(--color-accent-hover);
+}
+
+.view-details-btn {
+    padding: 8px 12px;
+    background: transparent;
+    color: var(--color-accent);
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.view-details-btn:hover {
+    background: var(--color-accent);
+    color: white;
+}
+
+/* Loading States */
+.locations-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+.locations-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.locations-empty i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--color-text-tertiary);
 }
 
 /* Traffic Control Styles */
@@ -1601,6 +1833,196 @@ input:focus {
 
 .route-info-enhanced .traffic-badge.disabled {
     background: var(--color-error);
+}
+
+/* دکمه حذف مکان از دیتابیس */
+.remove-location-btn {
+    background: linear-gradient(135deg, var(--color-error), #dc3545);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.remove-location-btn:hover {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.remove-location-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+}
+
+.remove-location-btn i {
+    font-size: 16px;
+}
+
+/* دکمه تنظیم مقصد */
+.set-destination-btn {
+    background: linear-gradient(135deg, var(--color-warning), #f59e0b);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.set-destination-btn:hover {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.set-destination-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
+}
+
+.set-destination-btn i {
+    font-size: 16px;
+}
+
+/* دکمه گوگل مپ */
+.google-maps-btn {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
+}
+
+.google-maps-btn:hover {
+    background: linear-gradient(135deg, #3367d6, #2d8f47);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.4);
+}
+
+.google-maps-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(66, 133, 244, 0.3);
+}
+
+.google-maps-btn i {
+    font-size: 18px;
+}
+
+/* دکمه کوچک گوگل مپ */
+.google-maps-small-btn {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 28px;
+    box-shadow: 0 1px 4px rgba(66, 133, 244, 0.3);
+}
+
+.google-maps-small-btn:hover {
+    background: linear-gradient(135deg, #3367d6, #2d8f47);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(66, 133, 244, 0.4);
+}
+
+.google-maps-small-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(66, 133, 244, 0.3);
+}
+
+.google-maps-small-btn i {
+    font-size: 14px;
+}
+
+/* دکمه‌های مسیریابی در popup */
+.popup-nav-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 32px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.popup-nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.popup-nav-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.popup-nav-btn i {
+    font-size: 16px;
+}
+
+/* دکمه گوگل مپ در popup */
+.google-maps-popup {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+}
+
+.google-maps-popup:hover {
+    background: linear-gradient(135deg, #3367d6, #2d8f47);
+}
+
+/* دکمه ویز در popup */
+.waze-popup {
+    background: linear-gradient(135deg, #33ccff, #0066cc);
+    color: white;
+}
+
+.waze-popup:hover {
+    background: linear-gradient(135deg, #29b3e6, #0052a3);
+}
+
+/* دکمه نشان در popup */
+.neshan-popup {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white;
+}
+
+.neshan-popup:hover {
+    background: linear-gradient(135deg, #e55a2b, #e0851a);
 }
 
 /* Print Styles */

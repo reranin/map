@@ -3,8 +3,12 @@ const cors = require("cors");
 const path = require("path");
 const axios = require("axios");
 const config = require("./config");
+const Database = require("./database");
 
 const app = express();
+
+// Initialize Database
+const db = new Database();
 
 // Middleware
 app.use(cors());
@@ -661,8 +665,136 @@ function calculateDistance(point1, point2) {
   return R * c;
 }
 
+// Database API Endpoints
+
+// دریافت تمام دسته‌بندی‌ها
+app.get("/api/categories", async (req, res) => {
+  try {
+    const categories = await db.getCategories();
+    res.json({
+      success: true,
+      categories: categories
+    });
+  } catch (error) {
+    console.error("خطا در دریافت دسته‌بندی‌ها:", error);
+    res.status(500).json({ error: "خطا در دریافت دسته‌بندی‌ها" });
+  }
+});
+
+// دریافت موقعیت‌ها بر اساس دسته‌بندی
+app.get("/api/locations", async (req, res) => {
+  try {
+    const { category_id, search } = req.query;
+    
+    let locations;
+    if (search) {
+      locations = await db.searchLocations(search);
+    } else {
+      locations = await db.getLocationsByCategory(category_id);
+    }
+    
+    res.json({
+      success: true,
+      locations: locations
+    });
+  } catch (error) {
+    console.error("خطا در دریافت موقعیت‌ها:", error);
+    res.status(500).json({ error: "خطا در دریافت موقعیت‌ها" });
+  }
+});
+
+// جستجوی موقعیت‌ها
+app.get("/api/locations/search", async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q) {
+      return res.status(400).json({ error: "عبارت جستجو الزامی است" });
+    }
+    
+    const locations = await db.searchLocations(q);
+    
+    res.json({
+      success: true,
+      locations: locations
+    });
+  } catch (error) {
+    console.error("خطا در جستجوی موقعیت‌ها:", error);
+    res.status(500).json({ error: "خطا در جستجوی موقعیت‌ها" });
+  }
+});
+
+// اضافه کردن موقعیت جدید
+app.post("/api/locations", async (req, res) => {
+  try {
+    const locationData = req.body;
+    
+    // اعتبارسنجی داده‌ها
+    if (!locationData.name || !locationData.latitude || !locationData.longitude) {
+      return res.status(400).json({ error: "نام، عرض و طول جغرافیایی الزامی است" });
+    }
+    
+    const newLocation = await db.addLocation(locationData);
+    
+    res.json({
+      success: true,
+      location: newLocation
+    });
+  } catch (error) {
+    console.error("خطا در اضافه کردن موقعیت:", error);
+    res.status(500).json({ error: "خطا در اضافه کردن موقعیت" });
+  }
+});
+
+// دریافت موقعیت بر اساس ID
+app.get("/api/locations/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const query = `
+      SELECT l.*, c.name as category_name, c.icon, c.color 
+      FROM locations l 
+      JOIN categories c ON l.category_id = c.id 
+      WHERE l.id = ? AND l.is_active = 1
+    `;
+    
+    db.db.get(query, [id], (err, row) => {
+      if (err) {
+        console.error("خطا در دریافت موقعیت:", err);
+        res.status(500).json({ error: "خطا در دریافت موقعیت" });
+      } else if (row) {
+        res.json({
+          success: true,
+          location: row
+        });
+      } else {
+        res.status(404).json({ error: "موقعیت پیدا نشد" });
+      }
+    });
+  } catch (error) {
+    console.error("خطا در دریافت موقعیت:", error);
+    res.status(500).json({ error: "خطا در دریافت موقعیت" });
+  }
+});
+
 // Start server
-app.listen(config.PORT, () => {
-  console.log(`🚀 سرور در پورت ${config.PORT} در حال اجرا است`);
-  console.log(`🌐 آدرس: http://localhost:${config.PORT}`);
+app.listen(config.PORT, async () => {
+  try {
+    // اتصال به دیتابیس
+    await db.connect();
+    
+    console.log(`🚀 سرور در پورت ${config.PORT} در حال اجرا است`);
+    console.log(`🌐 آدرس: http://localhost:${config.PORT}`);
+    console.log(`🗄️ دیتابیس SQLite آماده است`);
+  } catch (error) {
+    console.error("خطا در راه‌اندازی سرور:", error);
+    process.exit(1);
+  }
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 در حال بستن سرور...');
+  db.close();
+  process.exit(0);
 });
